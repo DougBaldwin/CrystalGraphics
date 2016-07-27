@@ -1,0 +1,7 @@
+# Git ignores for the crystals project.
+
+# Ignore compiled Python bytecode
+*.pyc
+
+# Specific files to ignore
+.DS_Store
