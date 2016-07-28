@@ -1,6 +1,9 @@
 # Part of a hierarchy of Python classes that render crystals or crystal aggregates to
-# various output devices. This class renders to a window, using the GPU rendering
-# pipeline to quickly produce reasonably realistic images.
+# various output devices. This class is a superclass for all renderers that render to a
+# window using the GPU rendering pipeline. This class and its descendants therefore
+# favor fast rendering over high realism. One of the main engineering reasons for this
+# class is to encapsulate the technology (e.g., Pyglet vs some other windowing library,
+# etc.) that performs such rendering.
 
 # Copyright (C) 2016 by Doug Baldwin.
 # This work is licensed under a Creative Commons Attribution 4.0 International License
@@ -21,25 +24,44 @@ from math import sqrt
 
 # The actual renderer class.
 
-class SimpleScreenRenderer( Renderer ) :
-
-
-
-
-	# Initialize a basic renderer.
+class ScreenRenderer( Renderer ) :
 	
-	def __init__( self ) :
+	
+	
+	
+	# For now, all screen renderers have a fixed number of light sources, dictated by the
+	# shaders that screen renderers use.
+	
+	N_LIGHTS = 4
+
+
+
+
+	# Initialize a screen renderer, given descriptions of the desired direct and ambient
+	# lighting. In particular, clients provide the overall intensity of ambient light,
+	# and lists specifying the positions (as 3 consecutive coordinates within the list)
+	# and intensities of each direct light source. With this information, this constructor
+	# creates a window for the image to appear in, and initializes the graphics library
+	# to draw an appropriately lit scene in that window.
+	
+	def __init__( self, ambientIntensity, lightDirections, lightIntensities ) :
 		
-		super(SimpleScreenRenderer,self).__init__()
+		super(ScreenRenderer,self).__init__()
 		
 		
-		# Create a window for this renderer to draw in, allowing the user to resize it.
+		# Create the window, allowing the user to resize it. But as the window resizes,
+		# always draw in a square part, to match the square cross-section of the view.
 		
 		self.window = pyglet.window.Window( resizable = True )
 		
 		@self.window.event
 		def on_resize( width, height ) :
-			glViewport( 0, 0, width, height )
+			if width > height :
+				margin = ( width - height ) // 2
+				glViewport( margin, 0, height, height )
+			else :
+				margin = ( height - width ) // 2
+				glViewport( 0, margin, width, width )
 			return pyglet.event.EVENT_HANDLED
 		
 		
@@ -79,7 +101,7 @@ class SimpleScreenRenderer( Renderer ) :
 			print "Error! Couldn't build shader: ", error.args[0]
 		
 		
-		# Initialize other OpenGL state.
+		# Initialize key OpenGL state.
 		
 		glEnable( GL_DEPTH_TEST )
 		
@@ -89,21 +111,21 @@ class SimpleScreenRenderer( Renderer ) :
 		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA )
 		glEnable( GL_BLEND )
 		
-		nLights = 4;					# Number of lights the shader expects, though I only use 1
-		lightDirections = ( GLfloat * (nLights * 3) )( 0.2, 0.9, sqrt( 1.0 - 0.2**2 - 0.9**2 ),
-													   1.0, 0.0, 0.0,
-													   1.0, 0.0, 0.0,
-													   1.0, 0.0, 0.0  )
-		lightIntensities = ( GLfloat * nLights )( 1.0, 0.0, 0.0, 0.0 )
+		
+		# Initialize light sources
+		
+		CDirections = ( GLfloat * (ScreenRenderer.N_LIGHTS * 3) )( *lightDirections  )
+		CIntensities = ( GLfloat * ScreenRenderer.N_LIGHTS )( *lightIntensities )
 		
 		directionLocation = getUniformLocation( self.shaders, "lightDirections" )
-		glUniform3fv( directionLocation, nLights, lightDirections )
+		glUniform3fv( directionLocation, ScreenRenderer.N_LIGHTS, CDirections )
 		
 		intensityLocation = getUniformLocation( self.shaders, "lightIntensities" )
-		glUniform1fv( intensityLocation, nLights, lightIntensities )
+		glUniform1fv( intensityLocation, ScreenRenderer.N_LIGHTS, CIntensities )
 		
 		ambientLocation = getUniformLocation( self.shaders, "ambientIntensity" )
-		glUniform1f( ambientLocation, 0.6 )
+		glUniform1f( ambientLocation, ambientIntensity )
+	
 	
 	
 	
@@ -199,55 +221,26 @@ class SimpleScreenRenderer( Renderer ) :
 	
 	
 	
-	# Set the position from which calls to "draw" will view the model. The view will be
-	# towards the origin from the point specified to this method, with a view volume
-	# extending from 1 unit in front of (i.e., towards the origin from) the point to the
-	# origin and then the same distance again beyond the origin. The front face of this
-	# viewing volume is 1 unit wide and high, centered on the viewer.
+	# Set the position from which calls to "draw" will view the model.
 	
 	def viewer( self, x, y, z ) :
 		
-		# This method builds a world-coordinates-to-clip-coordinates transformation for
-		# the crystal vertex shader to apply to vertices. Build this transformation in 2
-		# parts: First transform world coordinates to viewer-relative coordinates, then
-		# transform viewer coordinates to clip coordinates with a perspective projection.
+		# All that's appropriate for all screen renderers to do is tell the shaders
+		# where the viewer is.
 		
-		
-		# Build the world-to-viewer transformation matrix. This matrix is based on the
-		# idea that the unit-length basis vectors for a viewer-centered coordinate
-		# system are the columns of a transformation from viewer to world coordinates,
-		# and thus the rows of the inverse of that transformation (since the basis
-		# vectors are orthonormal). Extending this with a 4th column that translates
-		# the viewer origin to the world origin completes the transformation. Note that
-		# this translation just moves points the negative of the distance from the world
-		# origin to (x,y,z) in the viewer's "back" direction.
-		
-		distance = sqrt( x**2 + y**2 + z**2 )			# Viewer distance from origin
-		
-		back = normalize3( [x, y, z] )
-		up = normalize3( orthogonalize3( [0.0, 1.0, 0.0], back ) )
-		right = cross( up, back )
-		
-		viewMatrix = [ [ right[0], right[1], right[2], 0.0 ],
-					   [ up[0],    up[1],    up[2],    0.0 ],
-					   [ back[0],  back[1],  back[2],  -distance ],
-					   [ 0.0,      0.0,      0.0,      1.0 ] ]
-		
-		
-		# Build the viewer-to-clip projection matrix. The coefficients come from the
-		# viewing volume parameters described in the introductory comments to this
-		# method, using calculations derived in July 21, 2016 project notes.
-		
-		a = distance / ( 1.0 - distance )
-		b = ( 2.0 * distance - 1 ) / ( 1.0 - distance )
-		
-		projectionMatrix = [ [ 2.0,  0.0,   0.0,  0.0 ],
-							 [ 0.0,  2.0,   0.0,  0.0 ],
-							 [ 0.0,  0.0,   a,    b   ],
-							 [ 0.0,  0.0,  -1.0,  0.0 ] ]
-		
-		
-		# Give the vertex shader the product of the viewing and projection matrices.
+		positionBuffer = ( GLfloat * 3 )( x, y, z )
+		glUniform3fv( self.viewerLocation, 1, positionBuffer )
+	
+	
+	
+	
+	# A helper method for subclasses that performs the common task of building a world-to-
+	# clip coordinates transformation from separate world-to-viewer and viewer-to-clip
+	# transformations, and telling the shaders to use that transformation. Both
+	# transformations should be 4-by-4 matrices, represented as lists of lists in row-
+	# major order.
+	
+	def setViewingTransformation( self, viewMatrix, projectionMatrix ) :
 		
 		vpMatrix = matrixMultiply( projectionMatrix, viewMatrix )
 		
@@ -257,12 +250,6 @@ class SimpleScreenRenderer( Renderer ) :
 										 vpMatrix[3][0], vpMatrix[3][1], vpMatrix[3][2], vpMatrix[3][3] )
 										 
 		glUniformMatrix4fv( self.vpMatrixLocation, 1, GL_TRUE, (POINTER(GLfloat))( matrixBuffer ) )
-		
-		
-		# Finally, tell the vertex shader where the viewer is now.
-		
-		positionBuffer = ( GLfloat * 3 )( x, y, z )
-		glUniform3fv( self.viewerLocation, 1, positionBuffer )
 	
 	
 	

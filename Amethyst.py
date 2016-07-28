@@ -14,7 +14,7 @@
 # (https://creativecommons.org/licenses/by/4.0/)
 
 
-from SimpleScreenRenderer import SimpleScreenRenderer
+from StaticScreenRenderer import StaticScreenRenderer
 from math import pi, sin, cos
 
 
@@ -25,7 +25,7 @@ from math import pi, sin, cos
 
 # Set up a renderer to draw the crystal.
 
-renderer = SimpleScreenRenderer()
+renderer = StaticScreenRenderer()
 
 
 # Report the version of any rendering engine or library that the renderer uses.
