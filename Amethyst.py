@@ -15,6 +15,7 @@
 
 
 from StaticScreenRenderer import StaticScreenRenderer
+from RotatingScreenRenderer import RotatingScreenRenderer
 from math import pi, sin, cos
 
 
@@ -25,7 +26,7 @@ from math import pi, sin, cos
 
 # Set up a renderer to draw the crystal.
 
-renderer = StaticScreenRenderer()
+renderer = RotatingScreenRenderer()
 
 
 # Report the version of any rendering engine or library that the renderer uses.
@@ -33,13 +34,13 @@ renderer = StaticScreenRenderer()
 print "Renderer version:", renderer.version()
 
 
-# Basic parameters of the crystal: a and c axis lengths, material properties, key c
+# Basic parameters of the crystal: a and c axis lengths, material properties, key
 # coordinates for prism and pyramid, etc.
 
 a = 4.9133
 c = 5.4053
 
-material = ( 0.7, 0.1, 0.7, 0.5, 0.7, 20.0 )
+material = ( 0.58, 0.3, 0.8, 0.68, 0.85, 50.0 )
 
 topPrismC = 10
 topPyramidC = topPrismC + c

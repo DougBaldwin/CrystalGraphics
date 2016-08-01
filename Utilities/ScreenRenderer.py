@@ -39,10 +39,11 @@ class ScreenRenderer( Renderer ) :
 
 	# Initialize a screen renderer, given descriptions of the desired direct and ambient
 	# lighting. In particular, clients provide the overall intensity of ambient light,
-	# and lists specifying the positions (as 3 consecutive coordinates within the list)
-	# and intensities of each direct light source. With this information, this constructor
-	# creates a window for the image to appear in, and initializes the graphics library
-	# to draw an appropriately lit scene in that window.
+	# and lists specifying the directions to and intensities of each direct light source.
+	# The directions form a list of 12 numbers, with each consecutive group of 3 being the
+	# x, y, and z components of one direction vector. Each intensity is a single real
+	# number between 0 and 1. Using the lighting information, this constructor creates a
+	# window to draw in and initializes the graphics library.
 	
 	def __init__( self, ambientIntensity, lightDirections, lightIntensities ) :
 		
@@ -50,7 +51,7 @@ class ScreenRenderer( Renderer ) :
 		
 		
 		# Create the window, allowing the user to resize it. But as the window resizes,
-		# always draw in a square part, to match the square cross-section of the view.
+		# always draw in a square part, to match a square cross-section of views.
 		
 		self.window = pyglet.window.Window( resizable = True )
 		
@@ -234,11 +235,73 @@ class ScreenRenderer( Renderer ) :
 	
 	
 	
-	# A helper method for subclasses that performs the common task of building a world-to-
-	# clip coordinates transformation from separate world-to-viewer and viewer-to-clip
-	# transformations, and telling the shaders to use that transformation. Both
-	# transformations should be 4-by-4 matrices, represented as lists of lists in row-
-	# major order.
+	# Report the versions of OpenGL and GLSL that this renderer uses.
+	
+	def version( self ) :
+	
+		glVersion = glGetString( GL_VERSION )
+		glslVersion = glGetString( GL_SHADING_LANGUAGE_VERSION )
+		
+		return "OpenGL " + CStringToPython( glVersion ) + "; GLSL " + CStringToPython( glslVersion )
+	
+	
+	
+	
+	# A collection of utility methods that perform common actions related to viewing.
+	
+	# Construct a matrix that transforms the world coordinate system into a viewer
+	# coordinate system, given that the viewer is looking towards the origin from point
+	# (x,y,z).
+	
+	def originView( self, x, y, z ) :
+		
+		# The basis vectors for the viewer-centered coordinate system form the columns of
+		# a transformation from viewer to world coordinates, and thus the rows of the
+		# inverse of that transformation (since the basis vectors are orthonormal). This
+		# observation gives me a basic transformation from world to viewer coordinates.
+		# Extending the transformation matrix with a 4th column that translates the
+		# viewer origin to the world origin produces the complete transformation. Note
+		# that this translation just moves points the negative of the distance from the
+		# world origin to the viewer in the viewer's "back" direction.
+		
+		back = normalize3( [x, y, z] )
+		up = normalize3( orthogonalize3( [0.0, 1.0, 0.0], back ) )
+		right = cross( up, back )
+		
+		return [ [ right[0],  right[1],  right[2],  0.0 ],
+				 [ up[0],     up[1],     up[2],     0.0 ],
+				 [ back[0],   back[1],   back[2],   -sqrt( x**2 + y**2 + z**2 ) ],
+				 [ 0.0,       0.0,       0.0,       1.0 ] ]
+	
+	
+	
+	
+	# Build a projection matrix that transforms viewer-relative coordinates into clipping
+	# coordinates in a viewing volume whose front plane is 1 unit in front of (i.e.,
+	# towards the origin from) the viewer, and whose back plane is the same distance from
+	# the origin as the front plane, but on the opposite side of the origin. The front
+	# face of this viewing volume is 1 unit wide and high, centered on the viewer. The
+	# 2nd argument to this method is the distance from the origin to the viewer. The
+	# coefficients for the matrix come from the viewing volume parameters, using
+	# calculations derived in my July 21, 2016 project notes.
+	
+	def clipAroundOrigin( self, distance ) :
+		
+		a = distance / ( 1.0 - distance )
+		b = ( 2.0 * distance - 1 ) / ( 1.0 - distance )
+		
+		return [ [ 2.0,  0.0,   0.0,  0.0 ],
+				 [ 0.0,  2.0,   0.0,  0.0 ],
+				 [ 0.0,  0.0,   a,    b   ],
+				 [ 0.0,  0.0,  -1.0,  0.0 ] ]
+	
+	
+	
+	
+	# Build a world-to-clip coordinates transformation from separate world-to-viewer and
+	# viewer-to-clip transformations, and tell the shaders to use that transformation.
+	# Both transformations should be 4-by-4 matrices, represented as lists of lists in
+	# row-major order.
 	
 	def setViewingTransformation( self, viewMatrix, projectionMatrix ) :
 		
@@ -250,15 +313,3 @@ class ScreenRenderer( Renderer ) :
 										 vpMatrix[3][0], vpMatrix[3][1], vpMatrix[3][2], vpMatrix[3][3] )
 										 
 		glUniformMatrix4fv( self.vpMatrixLocation, 1, GL_TRUE, (POINTER(GLfloat))( matrixBuffer ) )
-	
-	
-	
-	
-	# Report the versions of OpenGL and GLSL that this renderer uses.
-	
-	def version( self ) :
-	
-		glVersion = glGetString( GL_VERSION )
-		glslVersion = glGetString( GL_SHADING_LANGUAGE_VERSION )
-		
-		return "OpenGL " + CStringToPython( glVersion ) + "; GLSL " + CStringToPython( glslVersion )
