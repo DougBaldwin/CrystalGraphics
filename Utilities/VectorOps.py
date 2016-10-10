@@ -3,6 +3,7 @@
 # elements, represented as Python lists.
 
 # Copyright 2016 by Doug Baldwin.
+# Additional contributions ("transpose" function) by Amelia Mindich.
 # This work is licensed under a Creative Commons Attribution 4.0 International License
 # (https://creativecommons.org/licenses/by/4.0/)
 
@@ -95,3 +96,20 @@ def matrixMultiply( M1, M2 ) :
 				product[r1][c2] = product[r1][c2] + M1[r1][i] * M2[i][c2]
 	
 	return product
+
+
+
+
+# Transpose matrix M. M is any matrix, represented as a list of lists, with each inner list
+# being a row (all inner lists must thus be of the same length). This function returns a
+# new matrix in which the rows are the columns  of M and the columns are the rows of M.
+
+def transpose( M ):
+
+
+	# All rows (j) become columns and all columns (i) become rows by copying the row values
+	# into the column values
+
+	result = [[M[j][i] for j in range(len(M))] for i in range(len(M[0]))]
+	
+	return result
