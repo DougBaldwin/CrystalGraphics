@@ -7,6 +7,18 @@
 # particular subclass (e.g., the "viewer" method for a hypothetical subclass that renders
 # to a 3D printer), the subclass can safely leave the method undefined and inherit the
 # dummy method from this class.
+#
+# Renderers work extensively with points representing the vertices of crystals, and some
+# may also work with vectors representing, e.g., directions. Clients may internally
+# represent these points or vectors in homogeneous coordinates, and may pass homogeneous
+# coordinates to a renderer. Renderers, however, must accept either homogeneous or
+# non-homogeneous coordinates, in order to be interchangeable in clients. To allow this,
+# homogeneous coordinates passed to renderers must have a fourth component of either 0 or
+# 1, i.e., the fourth component can't be used for scaling. For the sake of
+# interchangeability, renderers that need homogeneous coordinates internally must ensure
+# for themselves that their points/vectors are in homogeneous form. They can, however,
+# test to see if a point/vector argument is already in homogeneous form, creating a
+# homogeneous replacement for it if not.
 
 # Copyright 2016 by Doug Baldwin.
 # This work is licensed under a Creative Commons Attribution 4.0 International License
