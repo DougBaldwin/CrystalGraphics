@@ -3,7 +3,7 @@
 # rendering pipeline. The rotation is as if the viewer is orbiting the Y axis while
 # looking towards the origin.
 
-# Copyright (C) 2016 by Doug Baldwin.
+# Copyright (C) 2016 by Doug Baldwin (baldwin@geneseo.edu).
 # This work is licensed under a Creative Commons Attribution 4.0 International License
 # (https://creativecommons.org/licenses/by/4.0/)
 
