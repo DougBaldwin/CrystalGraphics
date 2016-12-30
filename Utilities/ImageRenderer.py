@@ -105,6 +105,11 @@ class ImageRenderer ( Renderer ) :
 	# Initialize an image renderer.
 	
 	def __init__( self ) :
+	
+
+		# Initialize the superclass.
+		
+		super( ImageRenderer, self ).__init__()
 		
 		
 		# Create a resizable window in which to eventually render the image and
