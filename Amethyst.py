@@ -9,13 +9,14 @@
 # information at mindat.org (specifically its "quartz no. 7"), although it may not
 # actually be a very common habit.
 
-# Copyright 2016 by Doug Baldwin.
+# Copyright 2016 by Doug Baldwin (baldwin@geneseo.edu).
 # This work is licensed under a Creative Commons Attribution 4.0 International License
 # (https://creativecommons.org/licenses/by/4.0/)
 
 
 from StaticScreenRenderer import StaticScreenRenderer
 from RotatingScreenRenderer import RotatingScreenRenderer
+from STLRenderer import ASCIISTLRenderer
 from math import pi, sin, cos
 
 

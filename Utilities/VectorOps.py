@@ -1,6 +1,10 @@
 # A collection of utility functions for performing vector arithmetic useful in graphics.
-# The vectors that these functions work with are of fixed length, for now always 3
-# elements, represented as Python lists.
+# The vectors that these functions work with are of fixed length, either 3 or 4 elements,
+# represented as Python lists. 3-element vectors are generally vectors in 3-space, which
+# may also represent points, while 4-element lists are 3-space vectors or points in
+# homogeneous form, i.e., those with a 4th component of 0 are vectors (contain only
+# directional information) while those with a 4th component of 1 are points (contain
+# positional information as well as directional).
 
 # Copyright 2016 by Doug Baldwin.
 # Additional contributions ("transpose" function) by Amelia Mindich.
@@ -13,7 +17,7 @@ from math import sqrt
 
 
 
-# Compute the length of a 3D vector
+# Compute the length of a 3D vector.
 
 def length3( v ) :
 	return sqrt( v[0]**2 + v[1]**2 + v[2]**2 )
@@ -21,10 +25,32 @@ def length3( v ) :
 
 
 
-# Compute the difference between 2 vectors
+# Compute the sum of 2 points or vectors in homogeneous form. In order to make geometric
+# sense, at most one of the arguments should be a point. With that restriction the sum
+# of 2 vectors will be a vector, while the sum of a vector and a point will be another
+# point.
+
+def add4( v1, v2 ) :
+	return [ v1[0] + v2[0], v1[1]+ v2[1], v1[2] + v2[2], v1[3] + v2[3] ]
+
+
+
+
+# Compute the difference between 2 3D vectors.
 
 def subtract3( v1, v2 ) :
 	return [ v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2] ]
+
+
+
+
+# Compute the difference between 2 points or vectors in homogeneous form. In order to
+# make geometric sense, either both arguments should be points, or both should be vectors.
+# Then the difference of 2 points will be the vector between them, while the difference
+# of 2 vectors will be another vector.
+
+def subtract4( v1, v2 ) :
+	return [ v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2], v1[3] - v2[3] ]
 
 
 
@@ -33,6 +59,16 @@ def subtract3( v1, v2 ) :
 
 def scale3( v, a ) :
 	return [ a * v[0], a * v[1], a * v[2] ]
+
+
+
+
+# Scale a vector or point in homogeneous form by multiplying the first 3 components by a
+# scalar while leaving the fourth component unchanged. This ensures that points scale to
+# points and vectors to vectors.
+
+def scale4H( v, a ) :
+	return [ a * v[0], a * v[1], a * v[2], v[3] ]
 
 
 
