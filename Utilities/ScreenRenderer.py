@@ -79,7 +79,6 @@ class ScreenRenderer( Renderer ) :
 		try :
 		
 			utilityDirectory = os.path.dirname( __file__ )
-			print "Utilities directory =", utilityDirectory
 			
 			vertexCode = readShader( utilityDirectory + "/CrystalVertexShader.glsl" )
 			vertexShader = compileShader( vertexCode, GL_VERTEX_SHADER )
