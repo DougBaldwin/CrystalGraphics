@@ -5,9 +5,16 @@
 # class is to encapsulate the technology (e.g., Pyglet vs some other windowing library,
 # etc.) that performs such rendering.
 
-# Copyright (C) 2016 by Doug Baldwin.
+# Copyright (C) 2016 by Doug Baldwin (baldwin@geneseo.edu).
 # This work is licensed under a Creative Commons Attribution 4.0 International License
 # (https://creativecommons.org/licenses/by/4.0/)
+
+# History:
+#
+#   July 2016 -- Created by Doug Baldwin.
+#
+#   May 2017 -- Modified by Doug Baldwin to look for shaders in whatever directory this
+#     module was loaded from, regardless of what the working directory might be.
 
 
 from Renderer import Renderer
@@ -18,6 +25,7 @@ import pyglet
 from pyglet.gl import *
 from ctypes import POINTER, pointer, sizeof
 from math import sqrt
+import os
 
 
 
@@ -69,11 +77,14 @@ class ScreenRenderer( Renderer ) :
 		# Install shaders.
 		
 		try :
+		
+			utilityDirectory = os.path.dirname( __file__ )
+			print "Utilities directory =", utilityDirectory
 			
-			vertexCode = readShader( "Utilities/CrystalVertexShader.glsl" )
+			vertexCode = readShader( utilityDirectory + "/CrystalVertexShader.glsl" )
 			vertexShader = compileShader( vertexCode, GL_VERTEX_SHADER )
 		
-			fragmentCode = readShader( "Utilities/CrystalFragmentShader.glsl" )
+			fragmentCode = readShader( utilityDirectory + "/CrystalFragmentShader.glsl" )
 			fragmentShader = compileShader( fragmentCode, GL_FRAGMENT_SHADER )
 		
 			self.shaders = glCreateProgram()
