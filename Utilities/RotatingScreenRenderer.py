@@ -140,7 +140,7 @@ class RotatingScreenRenderer( ScreenRenderer ) :
 	
 	def orbit( self, dt ) :
 	
-		radiansPerSecond = pi / 6.0;				# Do 1 complete orbit every 12 seconds
+		radiansPerSecond = pi / 10.0;				# Do 1 complete orbit every 20 seconds
 		
 		if self.orbiting :
 			self.theta = fmod( self.theta + radiansPerSecond * dt, 2.0 * pi )
