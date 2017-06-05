@@ -20,3 +20,20 @@ def transform4( vertices, transformation ) :
 
 	Mult = matrixMultiply( transformation, Intermediate )
 	return transpose( Mult )
+
+
+
+
+# Transform a single point or vector in homogeneous coordinates (i.e., a 4-element row
+# vector) by applying a 4-by-4 transformation matrix to it. Return the resulting row
+# vector.
+
+def transformRow4( v, transformation ) :
+	
+	
+	# Build a column vector from the row, multiply it by the transformation, and return
+	# a row vector built from the resulting column.
+	
+	column = [ [x] for x in v ]
+	transformedColumn = matrixMultiply( transformation, column )
+	return [ r[0] for r in transformedColumn ]
