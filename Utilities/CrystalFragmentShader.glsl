@@ -19,18 +19,6 @@ uniform vec3 lightDirections[ nLights ];		// Directions to lights
 uniform float lightIntensities[ nLights ];		// Intensities of lights
 
 
-// Clients tell this shader which face(s) to draw by setting the following variable to...
-//   1 - Draw front faces
-//   2 - Draw back faces
-//   3 - Draw all faces
-// Any other value causes the shader to draw no faces.
-
-uniform int whichFaces;
-const int FRONT = 1;
-const int BACK = 2;
-const int BOTH = 3;
-
-
 // Inputs to this shader that come directly from the vertex shader. Note that the normal
 // and viewer vectors are still in global coordinates.
 
@@ -47,61 +35,41 @@ varying float fragmentShine;			// Shininess exponent
 // coefficients of red, green, and blue reflection and an alpha value.
 
 void main() {
-
-
-	// Check to see if this fragment should be drawn at all, according to whether I'm
-	// drawing all faces or only front or back faces. Note that a fragment is front-facing
-	// if its normal points generally towards the viewer, and back-facing if the normal
-	// points generally away from the viewer.
 	
-	bool front = dot( normal, viewerVector ) >= 0.0;
 	
-	if (    ( whichFaces == FRONT && front )
-		 || ( whichFaces == BACK && !front )
-		 || whichFaces == BOTH  ) {
-
-
-		// If this fragment comes from the back of a surface, then use the reverse of that
-		// surface's normal in lighting calculations and attenuate light reaching the
-		// surface (since the visible face of the surface is inside the crystal).
+	// If this is a back face (i.e., its normal points generally away from the viewer),
+	// then negate its normal to point towards the viewer, and attenuate light reaching
+	// the fragment on the assumption that it's being viewed through a translucent body.
 	
-		vec3 effectiveNormal;
-		float attenuation;
+	vec3 effectiveNormal = normal;
+	float attenuation = 1.0;
 	
-		if ( front ) {
-			effectiveNormal = normal;
-			attenuation = 1.0;
-		}
-		else {
-			effectiveNormal = -normal;
-			attenuation = 1.0 - fragmentColor.a;
-		}
-
-
-		// Fragment color is a base color due to ambient light plus the sum of the diffuse
-		// and specular contributions from each light source.
-	
-		vec3 baseColor = ambientIntensity * fragmentColor.rgb;
-	
-		for ( int i = 0; i < nLights; ++i ) {
-			float cosineLightAngle = dot( effectiveNormal, lightDirections[i] );
-			if ( cosineLightAngle > 0.0 ) {
-				baseColor = baseColor +   lightIntensities[i]
-										* attenuation
-										* cosineLightAngle
-										* fragmentColor.rgb;
-				vec3 reflectionVector = normalize( 2.0 * cosineLightAngle * effectiveNormal - lightDirections[i] );
-				float cosineViewerAngle = max( dot( reflectionVector, viewerVector ), 0.0 );
-				baseColor = baseColor +   lightIntensities[i]
-										* attenuation
-										* pow( cosineViewerAngle, fragmentShine )
-										* fragmentKs;
-			}
-		}
-
-		gl_FragColor = vec4( baseColor, fragmentColor.a );
+	if ( dot( normal, viewerVector ) < 0.0 ) {
+		effectiveNormal = -normal;
+		attenuation = 1.0 - fragmentColor.a;
 	}
-	else {
-		discard;
+
+
+	// Fragment color is a base color due to ambient light plus the sum of the diffuse
+	// and specular contributions from each light source.
+
+	vec3 baseColor = ambientIntensity * fragmentColor.rgb;
+
+	for ( int i = 0; i < nLights; ++i ) {
+		float cosineLightAngle = dot( effectiveNormal, lightDirections[i] );
+		if ( cosineLightAngle > 0.0 ) {
+			baseColor = baseColor +   lightIntensities[i]
+									* attenuation
+									* cosineLightAngle
+									* fragmentColor.rgb;
+			vec3 reflectionVector = normalize( 2.0 * cosineLightAngle * effectiveNormal - lightDirections[i] );
+			float cosineViewerAngle = max( dot( reflectionVector, viewerVector ), 0.0 );
+			baseColor = baseColor +   lightIntensities[i]
+									* attenuation
+									* pow( cosineViewerAngle, fragmentShine )
+									* fragmentKs;
+		}
 	}
+
+	gl_FragColor = vec4( baseColor, fragmentColor.a );
 }

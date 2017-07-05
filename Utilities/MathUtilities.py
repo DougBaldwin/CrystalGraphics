@@ -27,3 +27,13 @@ def nearlyEqual( x, y ) :
 		return -tolerance < x < tolerance
 	else :
 		return 1 / (1+tolerance)  <  x / y  <  1 + tolerance
+
+
+
+
+# Determine whether all elements of some list satisfy a predicate, returning True if so
+# and False if not.
+
+def allSatisfy( predicate, list ) :
+
+	return all( map( predicate, list ) )

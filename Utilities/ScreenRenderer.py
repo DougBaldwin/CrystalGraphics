@@ -15,9 +15,13 @@
 #
 #   May 2017 -- Modified by Doug Baldwin to look for shaders in whatever directory this
 #     module was loaded from, regardless of what the working directory might be.
+#
+#   June 2017 -- Modified by Doug Baldwin to keep triangles in a BSP tree and render from
+#     back to front, for more realistic handling of translucent crystals.
 
 
 from Renderer import Renderer
+from BSPNode import BSPNode
 from VectorOps import normalize3, orthogonalize3, cross, matrixMultiply
 from GLUtilities import PROGRAM, GLError, readShader, compileShader, abortOnShaderError, \
 						getUniformLocation, getAttributeIndex, CStringToPython
@@ -33,6 +37,28 @@ import os
 # The actual renderer class.
 
 class ScreenRenderer( Renderer ) :
+	
+	
+	
+	
+	# Screen renderers have a BSP tree containing the triangles they draw. This tree
+	# provides a fast way to draw the triangles from back to front as seen by any viewer,
+	# thus supporting realistic rendering of translucent crystals. Screen renderers keep
+	# track of the BSP tree and viewer in the following attributes:
+	#   triangles - The root of the BSP tree.
+	#   eye - A 3-element list representing the viewer's position.
+	#
+	# Screen renderers also need to share a lot of information between methods about
+	# shaders that ultimately do the rendering. Screen renderers use the following
+	# attributes to do this:
+	#   shaders - The OpenGL object for the shader program.
+	#   positionIndex - Index for passing vertex position attributes to the vertex shader.
+	#   normalIndex - Index for passing normal vector attributes to the vertex shader.
+	#   colorIndex - Index for passing RGBA color attributes to the vertex shader.
+	#   specularIndex - Index for passing coefficient-of-specular-reflection attributes to vertex shader.
+	#   shineIndex - Index for passing specular shininess attributes to the vertex shader.
+	#   vpMatrixLocation - Location through which to pass viewing and projection matrix to vertex shader.
+	#   viewerLocation - Location through which to pass the viewer's position to the shaders.
 	
 	
 	
@@ -56,6 +82,12 @@ class ScreenRenderer( Renderer ) :
 	def __init__( self, ambientIntensity, lightDirections, lightIntensities ) :
 		
 		super(ScreenRenderer,self).__init__()
+		
+		
+		# Initially this renderer has no triangles and the viewer's position is unknown.
+		
+		self.triangles = None
+		self.eye = [ 0, 0, 0 ]
 		
 		
 		# Create the window, allowing the user to resize it. But as the window resizes,
@@ -101,7 +133,6 @@ class ScreenRenderer( Renderer ) :
 			self.shineIndex = getAttributeIndex( self.shaders, "shine" )
 			self.vpMatrixLocation = getUniformLocation( self.shaders, "viewProjection" )
 			self.viewerLocation = getUniformLocation( self.shaders, "viewerPosition" )
-			self.facesLocation = getUniformLocation( self.shaders, "whichFaces" )
 		
 			glUseProgram( self.shaders )
 				
@@ -112,15 +143,17 @@ class ScreenRenderer( Renderer ) :
 			print "Error! Couldn't build shader: ", error.args[0]
 		
 		
-		# Initialize key OpenGL state.
-		
-		glEnable( GL_DEPTH_TEST )
+		# Initialize key OpenGL state. And while it's not quite OpenGL state, tell Python
+		# that I'll be using glMapBuffer to access GPU buffers full of floating-point
+		# vertex data.
 		
 		glClearColor( 0.9, 0.9, 0.9, 1.0 )
-		glClearDepth( 1.0 )
 		
 		glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA )
 		glEnable( GL_BLEND )
+		
+		glMapBuffer.restype = POINTER(GLfloat)
+
 		
 		
 		# Initialize light sources
@@ -155,73 +188,94 @@ class ScreenRenderer( Renderer ) :
 	
 	
 	
+	# Add a triangle, defined by 3 vertices and by a list of material properties, to this
+	# renderer. The vertices should be given in counterclockwise order as seen from
+	# "outside" the triangle. The material properties define the color of this triangle,
+	# and consist, in order, of red, green, and blue coefficients of diffuse reflection,
+	# the material's alpha (opacity) value, its coefficient of specular reflection, and
+	# its shininess exponent (typically between 1 and 100).
+	
+	def triangle( self, v1, v2, v3, material ) :
+		
+		
+		# Put the triangle in this renderer's BSP tree, either by inserting it into an
+		# existing tree, or by creating a tree for it if it's the renderer's first
+		# triangle.
+		
+		if self.triangles is None :
+			self.triangles = BSPNode( v1, v2, v3, material )
+		else :
+			self.triangles.insert( v1, v2, v3, material )
+	
+	
+	
+	
 	# Draw this renderer's crystal.
 	
 	def draw( self ) :
 		
 		
-		# Build an OpenGL vertex buffer that contains the information about each vertex
-		# in the model. For now, that information is the x, y, and z coordinates, normal,
-		# and red, green, and blue color components of the vertex. Each vertex's data
-		# is contiguous in the buffer, which means that the corresponding OpenGL vertex,
-		# color, and other arrays have non-0 strides between their elements.
+		# Set up an OpenGL vertex buffer that will contain the information about each
+		# vertex in the model. But because the order in which vertices appear in the
+		# buffer may change if the viewer moves, I can only put data into the buffer at
+		# the instant when I'm about to draw it. So here I set up the buffer and the
+		# pointers I'll need into it, but don't put any data into it.
 		
-		vertexData = []
-		pythonStride = 12								# Number of Python numbers between vertices
-		byteStride = pythonStride * sizeof( GLfloat )	# Number of bytes between vertices
-		vertexOffset = 0								# Offset (in Python numbers) for vertex coordinates
-		normalOffset = 3								# Offset for normal vector
-		colorOffset = 6									# Offset for RGB color components
-		specularOffset = 10								# Offset for coefficient of specular reflection
-		shineOffset = 11								# Offset for shininess exponent
-		
-		for v in self.vertices :
-			vertexData += [ v.x, v.y, v.z,
-							v.nx, v.ny, v.nz,
-							v.red, v.green, v.blue, v.alpha,
-							v.specular, v.shine ]
-		
+		vertexCount = 3 * self.triangles.size()				# Number of vertices in this crystal
+		pythonStride = 12									# Number of Python numbers between vertices in buffer
+		byteStride = pythonStride * sizeof( GLfloat )		# Number of bytes between vertices
+		vertexBufferSize = byteStride * vertexCount			# Number of bytes in buffer
+		vertexOffset = 0									# Offset (in Python numbers) for vertex coordinates
+		normalOffset = 3									# Offset for normal vector
+		colorOffset = 6										# Offset for RGB color components
+		specularOffset = 10									# Offset for coefficient of specular reflection
+		shineOffset = 11									# Offset for shininess exponent
+				
 		bufferID = GLuint( 0 )
-		vertexArray = ( GLfloat * len(vertexData) )(*vertexData)
 		glGenBuffers( 1, pointer(bufferID) )
 		glBindBuffer( GL_ARRAY_BUFFER, bufferID )
-		glBufferData( GL_ARRAY_BUFFER, sizeof(vertexArray), vertexArray, GL_STATIC_DRAW )
+		glBufferData( GL_ARRAY_BUFFER, vertexBufferSize, None, GL_DYNAMIC_DRAW )
+		
 		glEnableVertexAttribArray( self.positionIndex )
+		glVertexAttribPointer( self.positionIndex, 3, GL_FLOAT, GL_FALSE, byteStride,
+							   vertexOffset * sizeof(GLfloat) )
+
 		glEnableVertexAttribArray( self.normalIndex )
+		glVertexAttribPointer( self.normalIndex, 3, GL_FLOAT, GL_FALSE, byteStride,
+							   normalOffset * sizeof(GLfloat) )
+
 		glEnableVertexAttribArray( self.colorIndex )
+		glVertexAttribPointer( self.colorIndex, 4, GL_FLOAT, GL_FALSE, byteStride,
+							   colorOffset * sizeof(GLfloat) )
+
 		glEnableVertexAttribArray( self.specularIndex )
+		glVertexAttribPointer( self.specularIndex, 1, GL_FLOAT, GL_FALSE, byteStride,
+							   specularOffset * sizeof(GLfloat) )
+
 		glEnableVertexAttribArray( self.shineIndex )
+		glVertexAttribPointer( self.shineIndex, 1, GL_FLOAT, GL_FALSE, byteStride,
+							   shineOffset * sizeof(GLfloat) )
 
 		
-		# Give this renderer an "on_draw" handler that will draw the contents of the
-		# vertex buffer. For best (but not necessarily perfect) translucency effects,
-		# draw the vertex buffer in 2 passes, the first drawing back faces and the
-		# second drawing front faces.
-		
-		FRONT = 1						# Code that tells shader to draw front faces
-		BACK = 2						# Code for back faces
+		# Give this renderer an "on_draw" handler that moves vertex data into the shader's
+		# input buffer in the right order for the current viewer position, and then draws
+		# the crystal. For best (but not necessarily perfect) translucency effects, draw
+		# the vertex buffer in 2 passes, the first drawing back faces and the second
+		# drawing front faces.
 		
 		@self.window.event
 		def on_draw() :
 		
-			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT )
+			glClear( GL_COLOR_BUFFER_BIT )
 			
 			glBindBuffer( GL_ARRAY_BUFFER, bufferID )
-			glVertexAttribPointer( self.positionIndex, 3, GL_FLOAT, GL_FALSE, byteStride,
-								   vertexOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.normalIndex, 3, GL_FLOAT, GL_FALSE, byteStride,
-								   normalOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.colorIndex, 4, GL_FLOAT, GL_FALSE, byteStride,
-								   colorOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.specularIndex, 1, GL_FLOAT, GL_FALSE, byteStride,
-								   specularOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.shineIndex, 1, GL_FLOAT, GL_FALSE, byteStride,
-								   shineOffset * sizeof(GLfloat) )
 			
-			glUniform1i( self.facesLocation, BACK )
-			glDrawArrays( GL_TRIANGLES, 0, len( self.vertices ) )
-			glUniform1i( self.facesLocation, FRONT )
-			glDrawArrays( GL_TRIANGLES, 0, len( self.vertices ) )
+			vertexBuffer = glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY )
+			if self.triangles is not None :
+				self.triangles.dump( vertexBuffer, self.eye )
+			glUnmapBuffer( GL_ARRAY_BUFFER )
+			
+			glDrawArrays( GL_TRIANGLES, 0, vertexCount )
 		
 		
 		# Run Pyglet's event loop, thus running the "draw" handler and then waiting for
@@ -236,8 +290,13 @@ class ScreenRenderer( Renderer ) :
 	
 	def viewer( self, x, y, z ) :
 		
-		# All that's appropriate for all screen renderers to do is tell the shaders
-		# where the viewer is.
+		
+		# Remember this position for rendering.
+		
+		self.eye = [ x, y, z ]
+		
+		
+		# Tell the shaders where the viewer is now.
 		
 		positionBuffer = ( GLfloat * 3 )( x, y, z )
 		glUniform3fv( self.viewerLocation, 1, positionBuffer )
