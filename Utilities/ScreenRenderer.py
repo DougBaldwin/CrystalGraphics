@@ -65,6 +65,10 @@ class ScreenRenderer( Renderer ) :
 		
 		@self.window.event
 		def on_resize( width, height ) :
+			# (actualWidth, actualHeight) = self.window.get_size()
+			# print "Window size = ", actualWidth, "by", actualHeight, ", request =", width, "by", height
+			# width = 2 * width
+			# height = 2 * height
 			if width > height :
 				margin = ( width - height ) // 2
 				glViewport( margin, 0, height, height )

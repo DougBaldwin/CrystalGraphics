@@ -35,7 +35,7 @@ class Amethyst( ConvexPolyhedron ) :
 		
 		# Tell the superclass what color amethysts are.
 		
-		super(Amethyst,self).__init__( [ 0.8, 0.3, 0.75, 0.55, 0.9, 100.0 ] )
+		super(Amethyst,self).__init__( [ 0.65, 0.5, 0.97, 0.6, 0.9, 100.0 ] )
 		
 		
 		# Build a list of vertices for the amethyst. This amethyst is a hexagonal prism
