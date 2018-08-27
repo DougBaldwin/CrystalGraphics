@@ -190,6 +190,18 @@ class Logger( object ) :
 class NullLogger( object  ) :
 	
 	
+	# (Don't) start a timer in this log. Return None as the ID for the non-timer.
+	
+	def startTimer( self ) :
+		return None
+	
+	
+	# (Don't) stop a specified timer in this log, with a specified label.
+	
+	def stopTimer( self, id, label ) :
+		pass
+	
+	
 	# (Don't) add a new record to this log. Use None as the ID for the non-record.
 	
 	def addRecord( self, data ) :

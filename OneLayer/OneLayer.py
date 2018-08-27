@@ -218,7 +218,7 @@ base.addToRenderer( renderer )
 # I can generate the actual crystal objects, clip them to their neighbors, and finally
 # add them to the renderer for drawing.
 
-N_CRYSTALS = 200								# Number of crystals to generate
+N_CRYSTALS = 100								# Number of crystals to generate
 
 crystals = TwoDEmptyTree( TwoDTree.X )			# An initially empty 2D tree to arrange crystals by position
 
