@@ -228,6 +228,15 @@ class TwoDNonemptyTree ( TwoDTree ) :
 	
 	def getNeighbor( self, triangle, clientT, clientAmethyst ) :
 		
+		# This function would theoretically be faster if it figured out which subtree
+		# contained the apex of the triangle and started its search there, only checking
+		# this tree's data and the other subtree if it was possible for them to contain a
+		# triangle nearer than any found in the first subtree. But the code to do that
+		# would be more complicated than the code below that always checks both subtrees,
+		# which might outweigh any time saving (although empirical tests show that the
+		# "smarter" trees are in fact faster).
+		
+		
 		# A local utility function that figures out a new minimum t and associated
 		# amethyst given old values for those things and possible better ones.
 		
@@ -238,68 +247,18 @@ class TwoDNonemptyTree ( TwoDTree ) :
 				return ( minT, minAmethyst )
 		
 		
-		# Start the actual computation by getting the best t value and amethyst for
-		# whichever subtree contains the triangle's apex. In the unlikely case that the
-		# apex lies exactly at this tree's midpoint, check all amethysts at that midpoint
-		# and both subtrees.
+		# Find the closest amethyst stored in the root of this tree, then see if either
+		# subtree can better it. Return the smallest t and associated amethyst from this
+		# process.
 		
-		apexCoordinate = triangle.getApex()[ self.dimension ]
-		
-		if nearlyEqual( apexCoordinate, self.mid ) :
-		
-		
-			# The rare case. Find the closest amethyst stored in the root of this tree,
-			# then see if either subtree can better it.
-		
-			minT = clientT
-			minAmethyst = clientAmethyst
-		
-			for a in self.amethysts :			
-				minT, minAmethyst = best( minT, minAmethyst, triangle.amethystT( a ), a )
-		
-			minAmethyst, minT = self.lowSide.getNeighbor( triangle, minT, minAmethyst )
-		
-			minAmethyst, minT = self.highSide.getNeighbor( triangle, minT, minAmethyst )
-			
-		
-		else :
-			
-			
-			# In the more common case, start with whichever subtree contains the apex of
-			# the triangle. Then see if the triangle intersects this tree's midline at t
-			# values that might allow amethysts stored in this tree or the other subtree
-			# to improve on the value from the apex subtree.
-			
-			if apexCoordinate < self.mid :
-				apexTree = self.lowSide
-				otherTree = self.highSide
-			else :
-				apexTree = self.highSide
-				otherTree = self.lowSide
-			
-			minAmethyst, minT = apexTree.getNeighbor( triangle, clientT, clientAmethyst )
-			
-			
-			# The midline has equation x = mid if this tree splits in the X dimension, or
-			# z = mid otherwise.
-			
-			if self.dimension == X :
-				A = 1
-				B = 0
-			else :
-				A = 0
-				B = 1
-				
-			t1, t2 = triangle.lineT( A, B, self.mid )
-			
-			if t1 < minT or t2 < minT  :
-					
-				for a in self.amethysts :			
-					minT, minAmethyst = best( minT, minAmethyst, triangle.amethystT( a ), a )
-		
-				minAmethyst, minT = otherTree.getNeighbor( triangle, minT, minAmethyst )
-		
-		
-		# Return the best amethyst and t seen.
+		minT = clientT
+		minAmethyst = clientAmethyst
+	
+		for a in self.amethysts :			
+			minT, minAmethyst = best( minT, minAmethyst, triangle.amethystT( a ), a )
+	
+		minAmethyst, minT = self.lowSide.getNeighbor( triangle, minT, minAmethyst )
+	
+		minAmethyst, minT = self.highSide.getNeighbor( triangle, minT, minAmethyst )
 		
 		return ( minAmethyst, minT )
