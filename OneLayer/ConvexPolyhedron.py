@@ -73,8 +73,8 @@ class ConvexPolyhedron ( object ) :
 		
 			# Start by going through this polyhedron's faces, building new clipped faces from
 			# those that intersect the plane, preserving unchanged those that are entirely on
-			# the normal side of the plane, and implicitly discarding those that are entirely
-			# on the anti-normal side.
+			# the anti-normal side of the plane, and implicitly discarding those that are
+			# entirely on the normal side.
 		
 			clipFaces = []						# Faces adjacent to cap accumulate here
 			clipVertices = set()				# Vertices of the cap accumuate here
@@ -113,17 +113,16 @@ class ConvexPolyhedron ( object ) :
 					nextClass = next.clipClass( a, b, c, d )
 				
 					if currentClass == Vertex.INSIDE :
+						
+						current, preserveVertices = ensureNearEqual( current, preserveVertices )
 				
 						newFace.append( current )
-					
-						if noNearEqual( current, preserveVertices ) :
-							preserveVertices.add( current )
 					
 						if nextClass == Vertex.OUTSIDE :
 							preserved = False
 							newVertex = clipPoint( current, next, a, b, c, d )
 							newVertex, clipVertices = ensureNearEqual( newVertex, clipVertices )
-							newFace.append( newVertex )
+							newFace = ensureNearEqualInList( newVertex, newFace )
 				
 					elif currentClass == Vertex.ON :
 					
@@ -135,17 +134,18 @@ class ConvexPolyhedron ( object ) :
 						# no harm in calling the vertex a clipping vertex). Whether a
 						# vertex on the clipping plane implies that its face is a clipping
 						# face depends on whether the next vertex around that face is
-						# back inside the clipped space or not. If it is inside, the face
-						# doesn't border the cap and so is not considered a clipped face,
-						# otherwise it is considered clipped.
-					
-						print "Vertex", current, "is on clipping plane"
-					
-						if noNearEqual( current, clipVertices ) :
-							clipVertices.add( current )
+						# outside the clipped space or not. If it is outside, the face
+						# definitely clips, but if the next vertex is inside then this
+						# face doesn't clip, at least not because of this contact, and if
+						# the next vertex is still on the clipping plane I don't know yet.
 						
-						if nextClass != Vertex.INSIDE :
+						current, clipVertices = ensureNearEqual( current, clipVertices )
+						
+						if nextClass == Vertex.OUTSIDE :
 							preserved = False
+						else :
+							current, preserveVertices = ensureNearEqual( current, preserveVertices )
+							newFace = ensureNearEqualInList( current, newFace )
 				
 					elif currentClass == Vertex.OUTSIDE :
 					
@@ -154,7 +154,7 @@ class ConvexPolyhedron ( object ) :
 						if nextClass == Vertex.INSIDE :
 							newVertex = clipPoint( current, next, a, b, c, d )
 							newVertex, clipVertices = ensureNearEqual( newVertex, clipVertices )
-							newFace.append( newVertex )
+							newFace = ensureNearEqualInList( newVertex, newFace )
 				
 					else :
 						print "Impossible clipping class", currentClass
@@ -163,12 +163,15 @@ class ConvexPolyhedron ( object ) :
 					currentClass = nextClass
 			
 			
-				# If there's anything in the possibly clipped face at all (there might not be
-				# if all its vertices clipped away), add its description to either the list of
-				# preserved faces or the list of clipped ones, according to whether or not
-				# all of its vertices are preserved.
+				# If there's anything in the possibly clipped face at all (there might not
+				# be if all its vertices clipped away, or it clipped to a single point),
+				# add its description to either the list of preserved faces or the list of
+				# clipped ones, according to whether or not all of its vertices are
+				# preserved. Note that if the clipped face clipped down to a line I keep
+				# it as a clipped face for now, because I'll need it for building the cap
+				# face, but remove it later.
 			
-				if len( newFace ) > 0 :
+				if len( newFace ) > 1 :
 					if preserved :
 						preserveFaces.append( newFace )
 					else :
@@ -187,7 +190,7 @@ class ConvexPolyhedron ( object ) :
 				# some neighbor, making that predecessor the current vertex, and so forth
 				# until I've taken a current clip vertex from each neighbor. In doing this,
 				# I rely quite a bit on the fact that with convex faces clipped against a
-				# plane, every clipped face will have contain exactly 2 clip vertices.
+				# plane, every clipped face will contain exactly 2 clip vertices.
 				
 				currentCapVertex = filter( lambda elt : elt in clipVertices, clipFaces[0] )[0]
 				capFace = []
@@ -221,10 +224,11 @@ class ConvexPolyhedron ( object ) :
 				clipFaces.append( capFace )
 		
 		
-			# Finally, the clipped polyhedron is the union of the preserved, clipped, and cap
-			# faces.
+			# Finally, the clipped polyhedron is the union of the preserved faces, the
+			# non-degenerate (i.e., not lines or points) clipped faces, which now include
+			# any cap face.
 		
-			self.faces = preserveFaces + clipFaces
+			self.faces = preserveFaces + filter( lambda face : len(face) > 2, clipFaces )
 		
 			self.vertices = preserveVertices | clipVertices
 		
@@ -429,10 +433,25 @@ def ensureNearEqual( newVertex, vertexSet ) :
 
 
 
-# Decide whether a set of vertices lacks a vertex equal, up to possible round-off, to a
-# given vertex. Return True if so, or False otherwise. This is basically a utility
-# function to help decide whether a vertex that should be in a set needs to be added
-# to it.
+# Ensure that a list of vertices contains one nearly equal to a given vertex. Ideally the
+# list already contains such a vertex, but if not this function appends it to the list. In
+# both cases, this function returns the list, guaranteed to contain something nearly equal
+# to the vertex.
+
+def ensureNearEqualInList( newVertex, vertexList ) :
+	
+	if noNearEqual( newVertex, vertexList ) :
+		vertexList.append( newVertex )
+	
+	return vertexList
+
+
+
+
+# Decide whether an iterable of vertices lacks a vertex equal, up to possible round-off,
+# to a given vertex. Return True if so, or False otherwise. This is basically a utility
+# function to help decide whether a vertex that should be in a set or list needs to be
+# added to it.
 
 def noNearEqual( newVertex, vertexSet ) :
 	

@@ -25,6 +25,14 @@ def length3( v ) :
 
 
 
+# Compute the sum of 2 3D vectors.
+
+def add3( v1, v2 ) :
+	return [ v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2] ]
+
+
+
+
 # Compute the sum of 2 points or vectors in homogeneous form. In order to make geometric
 # sense, at most one of the arguments should be a point. With that restriction the sum
 # of 2 vectors will be a vector, while the sum of a vector and a point will be another
@@ -138,7 +146,7 @@ def matrixMultiply( M1, M2 ) :
 
 # Transpose matrix M. M is any matrix, represented as a list of lists, with each inner list
 # being a row (all inner lists must thus be of the same length). This function returns a
-# new matrix in which the rows are the columns  of M and the columns are the rows of M.
+# new matrix in which the rows are the columns of M and the columns are the rows of M.
 
 def transpose( M ):
 

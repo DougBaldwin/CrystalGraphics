@@ -10,6 +10,9 @@
 #   June 2017 -- Created by Doug Baldwin.
 
 
+import sys
+
+
 
 
 # Determine whether two double-precision real numbers are nearly equal. For most purposes,
@@ -27,3 +30,22 @@ def nearlyEqual( x, y ) :
 		return -tolerance < x < tolerance
 	else :
 		return 1 / (1+tolerance)  <  x / y  <  1 + tolerance
+
+
+
+
+# Determine whether one number is less than or equal to another, taking possible roundoff
+# errors into account. This returns True if its first argument appears less than or equal
+# to its second with that stipulation, or False if not.
+
+def lessOrNearlyEqual( x, y ) :
+	return  x < y  or  nearlyEqual( x, y )
+
+
+
+
+# Return a real number bigger than any other (so a plausible substitute for "infinity"
+# in, e.g., comparisons).
+
+def infinity() :
+	return sys.float_info.max

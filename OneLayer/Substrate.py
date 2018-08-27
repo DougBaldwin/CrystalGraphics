@@ -9,6 +9,8 @@
 
 # History:
 #
+#   May 2018 -- Unused "OLD_addToRenderer" method removed by Doug Baldwin.
+#
 #   May 2017 -- Created by Doug Baldwin.
 
 
@@ -30,7 +32,7 @@ class Substrate( ConvexPolyhedron ) :
 		
 		# Tell the superclass what color the substrate is.
 		
-		super(Substrate,self).__init__( [ 0.62, 0.53, 0.49, 1, 0.1, 1 ] )
+		super(Substrate,self).__init__( [ 0.45, 0.45, 0.5, 1, 0.1, 1 ] )
 		
 		
 		# Define the substrate's faces and vertices. The substrate is a rectangular
@@ -51,41 +53,4 @@ class Substrate( ConvexPolyhedron ) :
 		self.defineFace( [ leftTopBack, leftBottomBack, leftBottomFront, leftTopFront ] )			# Left side
 		self.defineFace( [ leftBottomFront, leftBottomBack, rightBottomBack, rightBottomFront ] )	# Bottom
 		self.defineFace( [ leftTopBack, leftTopFront, rightTopFront, rightTopBack ] )				# Top
-	
-	
-	
-	
-	# Add this substrate's triangles to a renderer. This method alters the renderer's
-	# internal state but has no explicit return value.
-	
-	def OLD_addToRenderer( self, renderer ) :
-		
-		
-		# The substrate is 12 (2 per side) opaque, rock-colored, triangles. The bounds
-		# of the substrate's block are in world coordinates, so use them directly to
-		# calculate the vertices of the block and from there the triangles.
-		
-		leftBottomBack = [ self.minX, self.minY, self.minZ ]
-		leftBottomFront = [ self.minX, self.minY, self.maxZ ]
-		leftTopBack = [ self.minX, self.maxY, self.minZ ]
-		leftTopFront = [ self.minX, self.maxY, self.maxZ ]
-		rightBottomBack = [ self.maxX, self.minY, self.minZ ]
-		rightBottomFront= [ self.maxX, self.minY, self.maxZ ]
-		rightTopBack = [ self.maxX, self.maxY, self.minZ ]
-		rightTopFront = [ self.maxX, self.maxY, self.maxZ ]
-		
-		color = [ 0.62, 0.53, 0.49, 1, 0.1, 1 ]
-		
-		renderer.triangle( leftTopFront, leftBottomFront, rightBottomFront, color )		# Front of substrate
-		renderer.triangle( leftTopFront, rightBottomFront, rightTopFront, color )
-		renderer.triangle( rightTopFront, rightBottomFront, rightBottomBack, color )	# Right side
-		renderer.triangle( rightTopFront, rightBottomBack, rightTopBack, color )
-		renderer.triangle( rightTopBack, rightBottomBack, leftBottomBack, color )		# Back
-		renderer.triangle( rightTopBack, leftBottomBack, leftTopBack, color )
-		renderer.triangle( leftTopBack, leftBottomBack, leftBottomFront, color )		# Left side
-		renderer.triangle( leftTopBack, leftBottomFront, leftTopFront, color )
-		renderer.triangle( leftBottomFront, leftBottomBack, rightBottomBack, color )	# Bottom
-		renderer.triangle( leftBottomFront, rightBottomBack, rightBottomFront, color )
-		renderer.triangle( leftTopBack, leftTopFront, rightTopFront, color )			# Top
-		renderer.triangle( leftTopBack, rightTopFront, rightTopBack, color )
  

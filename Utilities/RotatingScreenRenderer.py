@@ -43,9 +43,9 @@ class RotatingScreenRenderer( ScreenRenderer ) :
 		
 		# Install a keyboard callback that toggles orbiting on and off every time the user
 		# presses a key. Whether orbiting is on or off is recorded in an "orbiting" flag,
-		# which is initially on.
+		# which is initially off.
 		
-		self.orbiting = True
+		self.orbiting = False
 		
 		@self.window.event
 		def on_key_press( symbols, modifiers ) :
