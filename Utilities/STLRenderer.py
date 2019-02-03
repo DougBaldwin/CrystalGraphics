@@ -18,7 +18,7 @@ from VectorOps import subtract3, cross, normalize3
 
 #The STL file writer class, includes "ASCII" in name in case we need a boolean Renderer in the future
 
-class ASCIISTLRenderer(Renderer):
+class ASCIISTLRenderer( Renderer ) :
 
 
 
@@ -38,7 +38,7 @@ class ASCIISTLRenderer(Renderer):
 		
 		#Initialize an empty file that the STL Renderer will write into
 		
-		self.result = file(self.string,'w')
+		self.result = open(self.string,'w')
 		
 		
 		

@@ -58,9 +58,13 @@ class ImageRenderer ( Renderer ) :
 	def newImage( self, width, height, pixels ) :
 	
 	
-		# Build the new image.
+		# Build the new image. First transform the byte pixel data into a Python string,
+		# being careful to use all 8 bits of each byte to create the corresponding
+		# character of the string (decoding with respect to ISO-8859-1 does this), then
+		# using that string to create the sprite image.
 		
-		self.img = pyglet.image.ImageData( width, height, "RGB", str(pixels) )
+		pixelString = pixels.decode( "ISO-8859-1" )
+		self.img = pyglet.image.ImageData( width, height, "RGB", pixelString )
 		
 		
 		# Replace the sprite with one for the new image, after purging the old one from
@@ -109,7 +113,7 @@ class ImageRenderer ( Renderer ) :
 
 		# Initialize the superclass.
 		
-		super( ImageRenderer, self ).__init__()
+		super().__init__()
 		
 		
 		# Create a resizable window in which to eventually render the image and

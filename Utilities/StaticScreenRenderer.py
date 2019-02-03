@@ -25,12 +25,12 @@ class StaticScreenRenderer( ScreenRenderer ) :
 	
 	def __init__( self ) :
 		lightPos = normalize3( [ 2.5, 9.0, 0.5 ] )
-		super(StaticScreenRenderer,self).__init__( 0.6,
-												   [ lightPos[0], lightPos[1], lightPos[2],
-													 1.0, 0.0, 0.0,
-													 1.0, 0.0, 0.0,
-													 1.0, 0.0, 0.0  ],
-													[ 1.0, 0.0, 0.0, 0.0 ] )
+		super().__init__( 0.6,
+						  [ lightPos[0], lightPos[1], lightPos[2],
+							1.0, 0.0, 0.0,
+							1.0, 0.0, 0.0,
+							1.0, 0.0, 0.0  ],
+						  [ 1.0, 0.0, 0.0, 0.0 ] )
 	
 	
 	

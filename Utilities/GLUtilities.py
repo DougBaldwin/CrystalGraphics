@@ -48,12 +48,15 @@ def compileShader( source, type ) :
 	
 	# Attaching source code to a shader requires a pointer to a pointer to the beginning
 	# of the first string of that code. In this case it's a pointer to a pointer to the
-	# first character of a C string containing the "source" parameter. I also want a
-	# null pointer in place of a pointer to an array of integer lengths of source lines.
+	# first character of a C string containing the "source" parameter.
 	
-	sourceCString = create_string_buffer( source )
+	sourceCString = pythonStringToGLString( source )
 	sourcePtr = (POINTER(GLchar))( sourceCString )
 	sourcePtrPtr = pointer( sourcePtr )
+	
+	
+	# I'll also need a null pointer in place of a pointer to an array of integer lengths of
+	# source lines.
 	
 	NULL = (POINTER(GLint))()
 	
@@ -118,7 +121,7 @@ def abortOnShaderError( id, type ) :
 		else :
 			glGetProgramInfoLog( id, msgLength, NULL, errorMessagePtr )
 		
-		raise GLError, errorMessage.value
+		raise GLError( errorMessage.value )
 
 
 
@@ -132,7 +135,7 @@ def getUniformLocation( program, variable ) :
 	
 	# Build a C string from the variable name, and use it to get the location.
 	
-	cName = create_string_buffer( variable )
+	cName = pythonStringToGLString( variable )
 	cNamePtr = ( POINTER(GLchar) )( cName )
 	
 	return glGetUniformLocation( program, cNamePtr )
@@ -148,7 +151,7 @@ def getAttributeIndex( programID, attributeName ) :
 	
 	# Build a C string from the attribute name, and give it to OpenGL to find the index.
 	
-	cName = create_string_buffer( attributeName )
+	cName = pythonStringToGLString( attributeName )
 	cNamePtr = ( POINTER(GLchar) )( cName )
 	
 	return glGetAttribLocation( programID, cNamePtr )
@@ -172,3 +175,21 @@ def CStringToPython( bytes ) :
 		c = c + 1
 	
 	return pythonString
+
+
+
+
+# Convert a Python string to a whatever sort of C string OpenGL wants, i.e., a null-
+# terminated array of GLchar values. At the moment (February 2019, working with OpenGL
+# 2.1), this seems to mean an array of single bytes. Clients should be able to use this
+# function on any string made up of symbols from the first 256 Unicode codepoints.
+
+def pythonStringToGLString( chars ) :
+	
+	 # Encode the Python string of Unicode characters into a Python byte sequence, and
+	 # then turn that into a C string. I use ISO-8859-1 to encode unicode into bytes
+	 # because it can encode all of the first 256 unicode codepoints into bytes (unlike,
+	 # say, UTF-8, which would encode 128 codepoints as single bytes and use multiple
+	 # bytes for the rest).
+	
+	return create_string_buffer( chars.encode("ISO-8859-1") )

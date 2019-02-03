@@ -30,7 +30,7 @@ from VectorOps import subtract3, cross, normalize3
 
 
 
-class Renderer( object ):
+class Renderer :
 	
 	
 	

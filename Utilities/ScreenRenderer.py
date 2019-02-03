@@ -55,7 +55,7 @@ class ScreenRenderer( Renderer ) :
 	
 	def __init__( self, ambientIntensity, lightDirections, lightIntensities ) :
 		
-		super(ScreenRenderer,self).__init__()
+		super().__init__()
 		
 		
 		# Create the window, allowing the user to resize it. But as the window resizes,
@@ -110,10 +110,10 @@ class ScreenRenderer( Renderer ) :
 			glUseProgram( self.shaders )
 				
 		except IOError as error :
-			print "Error! Unable to read shader: ", error.strerror
+			print( "Error! Unable to read shader: ", error.strerror )
 		
-		except ShaderError as error :
-			print "Error! Couldn't build shader: ", error.args[0]
+		except GLError as error :
+			print( "Error! Couldn't build shader: ", error.args[0] )
 		
 		
 		# Initialize key OpenGL state.
@@ -140,21 +140,6 @@ class ScreenRenderer( Renderer ) :
 		
 		ambientLocation = getUniformLocation( self.shaders, "ambientIntensity" )
 		glUniform1f( ambientLocation, ambientIntensity )
-	
-	
-	
-	
-	# Destroy a screen renderer. It seems very unlikely that a screen renderer would
-	# have a usable OpenGL context after the first call to its "draw" method finishes,
-	# but in case someone modifies "draw" so that renderers can continue to be used
-	# after it returns, I provide this method to clean up any state under my control.
-	
-	def __del__( self ) :
-		
-		
-		# The only state that needs to be cleaned up is the renderer's shader program.
-		
-		glDeleteProgram( self.shaders )
 	
 	
 	
@@ -232,7 +217,12 @@ class ScreenRenderer( Renderer ) :
 		# the user to close the window to stop the program.
 		
 		pyglet.app.run()
-	
+		
+		
+		# Now delete this renderer's shaders, since they're no longer needed.
+		
+		glDeleteProgram( self.shaders )
+
 	
 	
 	

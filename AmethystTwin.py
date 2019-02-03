@@ -15,10 +15,11 @@ from SymmetryOps import transform4
 from math import pi, sin, cos
 
 
-renderer = RotatingScreenRenderer() # ASCIISTLRenderer('Twin.stl')
+renderer = RotatingScreenRenderer()
+# renderer = ASCIISTLRenderer('Twin.stl')
 
 
-print "Renderer version:", renderer.version()
+print( "Renderer version:", renderer.version() )
 
 
 a = 10

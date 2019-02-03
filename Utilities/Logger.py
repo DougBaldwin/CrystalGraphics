@@ -60,7 +60,7 @@ def makeLogger() :
 
 # The class that represents loggers.
 
-class Logger( object ) :
+class Logger :
 	
 	
 	# A "file name" loggers recognize as meaning standard output.
@@ -167,7 +167,8 @@ class Logger( object ) :
 		# figured out what file object to dump it to.
 		
 		def dumpLog( destination ) :
-			map( lambda rec : destination.write( rec + "\n" ), self.data )
+			for rec in self.data :
+				destination.write( rec + "\n" )
 		
 		
 		# Write the log to either standard output or an open but erased disk file,
@@ -187,7 +188,7 @@ class Logger( object ) :
 # The class that represents dummy loggers, i.e., objects that provide a logger's interface
 # but ignore all calls to it as quickly as possible.
 
-class NullLogger( object  ) :
+class NullLogger :
 	
 	
 	# (Don't) start a timer in this log. Return None as the ID for the non-timer.

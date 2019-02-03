@@ -33,12 +33,12 @@ class RotatingScreenRenderer( ScreenRenderer ) :
 		light1Pos = normalize3( [ 1.0, 9.0, 2.0 ] )
 		light2Pos = normalize3( [ -1.0, -0.9, -0.05 ] )
 		
-		super(RotatingScreenRenderer,self).__init__( 0.6,
-													 [ light1Pos[0], light1Pos[1], light1Pos[2],
-													   light2Pos[0], light2Pos[1], light2Pos[2],
-													   1.0, 0.0, 0.0,
-													   1.0, 0.0, 0.0  ],
-													 [ 1.0, 0.5, 0.0, 0.0 ] )
+		super().__init__( 0.6,
+						  [ light1Pos[0], light1Pos[1], light1Pos[2],
+							light2Pos[0], light2Pos[1], light2Pos[2],
+							1.0, 0.0, 0.0,
+							1.0, 0.0, 0.0  ],
+						  [ 1.0, 0.5, 0.0, 0.0 ] )
 		
 		
 		# Install a keyboard callback that toggles orbiting on and off every time the user

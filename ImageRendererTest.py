@@ -17,7 +17,7 @@ from ImageRenderer import ImageRenderer
 renderer = ImageRenderer()
 
 
-# Create the color bars. Start with a yello bar across the top of the image, with
+# Create the color bars. Start with a yellow bar across the top of the image, with
 # vertical red (at the left side), green (center), and blue (right) bars below it. This
 # pattern allows me to see whether the image is oriented correctly top-to-bottom and
 # left-to-right.

@@ -20,7 +20,7 @@ import sys
 
 
 
-class Triangle( object ) :
+class Triangle :
 	
 	
 	

@@ -18,7 +18,7 @@ from MathUtilities import nearlyEqual
 
 
 
-class ConvexPolyhedron ( object ) :
+class ConvexPolyhedron :
 	
 	
 	
@@ -157,7 +157,7 @@ class ConvexPolyhedron ( object ) :
 							newFace = ensureNearEqualInList( newVertex, newFace )
 				
 					else :
-						print "Impossible clipping class", currentClass
+						print( "Impossible clipping class", currentClass )
 				
 					current = next
 					currentClass = nextClass
@@ -192,7 +192,7 @@ class ConvexPolyhedron ( object ) :
 				# I rely quite a bit on the fact that with convex faces clipped against a
 				# plane, every clipped face will contain exactly 2 clip vertices.
 				
-				currentCapVertex = filter( lambda elt : elt in clipVertices, clipFaces[0] )[0]
+				currentCapVertex = [v for v in clipFaces[0] if v in clipVertices][0]
 				capFace = []
 				
 				for i in range( len(clipFaces) ) :
@@ -228,14 +228,14 @@ class ConvexPolyhedron ( object ) :
 			# non-degenerate (i.e., not lines or points) clipped faces, which now include
 			# any cap face.
 		
-			self.faces = preserveFaces + filter( lambda face : len(face) > 2, clipFaces )
+			self.faces = preserveFaces + [face for face in clipFaces if len(face) > 2]
 		
 			self.vertices = preserveVertices | clipVertices
 		
 		except Exception as error :
 			
-			print "Probable bug in ConvexPolyhedron.clip:"
-			print "\t", error
+			print( "Probable bug in ConvexPolyhedron.clip:" )
+			print( "\t", error )
 	
 	
 	
@@ -410,7 +410,7 @@ def clipPoint( start, finish, a, b, c, d ) :
 
 def findNearEquals( vertex, vertexSet ) :
 
-	return filter( lambda v : vertex.equivalent(v), vertexSet )
+	return [v for v in vertexSet if vertex.equivalent(v)]
 
 
 

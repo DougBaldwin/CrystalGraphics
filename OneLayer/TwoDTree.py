@@ -34,7 +34,7 @@ Z = 2
 
 #  The base class.
 
-class TwoDTree ( object ) :
+class TwoDTree :
 	
 	
 	
@@ -85,7 +85,7 @@ class TwoDEmptyTree ( TwoDTree ) :
 	
 	def __init__( self, dimension ) :
 		
-		super(TwoDEmptyTree,self).__init__( dimension )
+		super().__init__( dimension )
 	
 	
 	
@@ -156,7 +156,7 @@ class TwoDNonemptyTree ( TwoDTree ) :
 		
 		# Initialize the superclass with this tree's dimension.
 		
-		super(TwoDNonemptyTree,self).__init__(  dimension )
+		super().__init__(  dimension )
 		
 		
 		# Find out what this amethyst's coordinate is in the appropriate dimension, and
@@ -209,7 +209,8 @@ class TwoDNonemptyTree ( TwoDTree ) :
 		# Apply the function to all of this tree's amethysts, then to any amethysts in
 		# each subtree.
 		
-		map( f, self.amethysts )
+		for a in self.amethysts :
+			f( a )
 		
 		self.highSide.traverse( f )
 		self.lowSide.traverse( f )

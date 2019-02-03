@@ -32,7 +32,7 @@ renderer = RotatingScreenRenderer()
 
 # Report the version of any rendering engine or library that the renderer uses.
 
-print "Renderer version:", renderer.version()
+print( "Renderer version:", renderer.version() )
 
 
 # Basic parameters of the crystal: a and c axis lengths, material properties, key

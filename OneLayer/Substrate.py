@@ -32,7 +32,7 @@ class Substrate( ConvexPolyhedron ) :
 		
 		# Tell the superclass what color the substrate is.
 		
-		super(Substrate,self).__init__( [ 0.45, 0.45, 0.5, 1, 0.1, 1 ] )
+		super().__init__( [ 0.45, 0.45, 0.5, 1, 0.1, 1 ] )
 		
 		
 		# Define the substrate's faces and vertices. The substrate is a rectangular

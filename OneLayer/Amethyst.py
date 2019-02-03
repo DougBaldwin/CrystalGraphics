@@ -84,7 +84,7 @@ class Amethyst( ConvexPolyhedron ) :
 		
 		# Start by initializing the superclass with the color of amethysts.
 		
-		super(Amethyst,self).__init__( [ 0.7, 0.55, 0.98, 0.7, 0.9, 100.0 ] )
+		super().__init__( [ 0.7, 0.55, 0.98, 0.7, 0.9, 100.0 ] )
 		
 		
 		# Store the parameters in the corresponding member variables.
