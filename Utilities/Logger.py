@@ -32,14 +32,19 @@ import sys
 
 
 
-# The function that creates a logger based on command-line arguments.
+# The function that creates a logger based on command-line arguments. If the client
+# program has its own command-line argument parser, it should pass that as the optional
+# argument to this function; this function will add information about log-related
+# arguments to it and use it to parse the command line. If the client doesn't have its
+# own parser, it should call this function with no argument. Note that because this
+# function adds argument information to any parser it receives, it is a good idea for
+# clients to call this before they start parsing their own arguments.
 
-def makeLogger() :
+def makeLogger( parser=ArgumentParser() ) :
 	
 	
-	# Make a parser with which to process the command line.
+	# Make sure the parser knows about log-related options, then see if any are there.
 	
-	parser = ArgumentParser()
 	parser.add_argument( "-l", "--log", nargs = "?", const = Logger.STDOUT,
 						help = "Record activity in log file or to stdout if no file name given" )
 	
