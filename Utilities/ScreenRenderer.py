@@ -23,9 +23,10 @@ from GLUtilities import PROGRAM, GLError, readShader, compileShader, abortOnShad
 						getUniformLocation, getAttributeIndex, CStringToPython
 import pyglet
 from pyglet.gl import *
-from ctypes import POINTER, pointer, sizeof
+from ctypes import POINTER, pointer, sizeof, cast
 from math import sqrt
 import os
+import time							# For performance testing
 
 
 
@@ -36,6 +37,29 @@ class ScreenRenderer( Renderer ) :
 	
 	
 	
+	
+	# Screen renderers use the following attributes, in addition to those they inherit,
+	# to manage rendering:
+	#   window - The Pyglet window in which the renderer draws.
+	#   shaders - An OpenGL/GLSL shader program the renderer uses to put pixels on screen.
+	#   positionIndex,
+	#   normalIndex,
+	#   colorIndex,
+	#   specularIndex,
+	#   shineIndex - GLSL vertex attribute indices for vertex positions, normal vectors,
+	#     colors, coefficients of specular reflection, and shininess exponents.
+	#   vpMatrixLocation - The location for a GLSL uniform variable that holds a matrix
+	#     defining the viewing and projection transformations to use in rendering.
+	#   viewerLocation -  The location of a GLSL uniform variable that holds the viewer's
+	#     position as a three-element vector.
+	#   facesLocation - The location of a GLSL uniform variable that indicates whether
+	#     shaders are to draw front or back faces of polygons (the shaders operate in 2
+	#     passes, one for back faces and then one for front, to get better results from
+	#     alpha blending).
+	#   modelSame - A Boolean value that indicates whether the model now being drawn is
+	#     definitely the same as the one drawn last time (True) or might have changed
+	#     (False).
+	#   oldVertexCount - The number of vertices the model had last time it was drawn.
 	
 	# For now, all screen renderers have a fixed number of light sources, dictated by the
 	# shaders that screen renderers use.
@@ -65,10 +89,6 @@ class ScreenRenderer( Renderer ) :
 		
 		@self.window.event
 		def on_resize( width, height ) :
-			# (actualWidth, actualHeight) = self.window.get_size()
-			# print "Window size = ", actualWidth, "by", actualHeight, ", request =", width, "by", height
-			# width = 2 * width
-			# height = 2 * height
 			if width > height :
 				margin = ( width - height ) // 2
 				glViewport( margin, 0, height, height )
@@ -140,41 +160,48 @@ class ScreenRenderer( Renderer ) :
 		
 		ambientLocation = getUniformLocation( self.shaders, "ambientIntensity" )
 		glUniform1f( ambientLocation, ambientIntensity )
+		
+		
+		# Right now the model has no vertices in it. Call that a change from the
+		# previous time it was drawn, since there is no "previous time."
+		
+		self.oldVertexCount = 0
+		self.modelSame = False
 	
 	
 	
 	
-	# Draw this renderer's crystal.
+	# Draw this renderer's model.
 	
 	def draw( self ) :
+
 		
+		# Give this renderer an "on_draw" handler that builds and draws an OpenGL vertex
+		# buffer that contains the information about each vertex in the model. For now,
+		# that information is the x, y, and z coordinates, normal, and red, green, blue,
+		# and alpha color components of the vertex. Each vertex's data is contiguous in
+		# the buffer, which means that the corresponding OpenGL vertex, color, and other
+		# arrays have non-0 strides between their elements. For best (but not necessarily
+		# perfect) translucency effects, I draw the vertex buffer in 2 passes, the first
+		# drawing back faces and the second drawing front faces. I also set up as much
+		# OpenGL state as possible, namely the ID for the vertex buffer and enabling the
+		# attributes my shader uses, before the "on_draw" function rather than inside it,
+		# to avoid doing those things more often than necessary.
 		
-		# Build an OpenGL vertex buffer that contains the information about each vertex
-		# in the model. For now, that information is the x, y, and z coordinates, normal,
-		# and red, green, and blue color components of the vertex. Each vertex's data
-		# is contiguous in the buffer, which means that the corresponding OpenGL vertex,
-		# color, and other arrays have non-0 strides between their elements.
+		FRONT = 1						# Code that tells shader to draw front faces
+		BACK = 2						# Code for back faces
 		
-		vertexData = []
-		pythonStride = 12								# Number of Python numbers between vertices
+		pythonStride = 12								# Number of Python numbers between vertices in the buffer
 		byteStride = pythonStride * sizeof( GLfloat )	# Number of bytes between vertices
 		vertexOffset = 0								# Offset (in Python numbers) for vertex coordinates
 		normalOffset = 3								# Offset for normal vector
 		colorOffset = 6									# Offset for RGB color components
 		specularOffset = 10								# Offset for coefficient of specular reflection
 		shineOffset = 11								# Offset for shininess exponent
-		
-		for v in self.vertices :
-			vertexData += [ v.x, v.y, v.z,
-							v.nx, v.ny, v.nz,
-							v.red, v.green, v.blue, v.alpha,
-							v.specular, v.shine ]
-		
+			
 		bufferID = GLuint( 0 )
-		vertexArray = ( GLfloat * len(vertexData) )(*vertexData)
 		glGenBuffers( 1, pointer(bufferID) )
-		glBindBuffer( GL_ARRAY_BUFFER, bufferID )
-		glBufferData( GL_ARRAY_BUFFER, sizeof(vertexArray), vertexArray, GL_STATIC_DRAW )
+			
 		glEnableVertexAttribArray( self.positionIndex )
 		glEnableVertexAttribArray( self.normalIndex )
 		glEnableVertexAttribArray( self.colorIndex )
@@ -182,35 +209,90 @@ class ScreenRenderer( Renderer ) :
 		glEnableVertexAttribArray( self.shineIndex )
 
 		
-		# Give this renderer an "on_draw" handler that will draw the contents of the
-		# vertex buffer. For best (but not necessarily perfect) translucency effects,
-		# draw the vertex buffer in 2 passes, the first drawing back faces and the
-		# second drawing front faces.
-		
-		FRONT = 1						# Code that tells shader to draw front faces
-		BACK = 2						# Code for back faces
-		
 		@self.window.event
 		def on_draw() :
-		
-			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT )
 			
 			glBindBuffer( GL_ARRAY_BUFFER, bufferID )
-			glVertexAttribPointer( self.positionIndex, 3, GL_FLOAT, GL_FALSE, byteStride,
-								   vertexOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.normalIndex, 3, GL_FLOAT, GL_FALSE, byteStride,
-								   normalOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.colorIndex, 4, GL_FLOAT, GL_FALSE, byteStride,
-								   colorOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.specularIndex, 1, GL_FLOAT, GL_FALSE, byteStride,
-								   specularOffset * sizeof(GLfloat) )
-			glVertexAttribPointer( self.shineIndex, 1, GL_FLOAT, GL_FALSE, byteStride,
-								   shineOffset * sizeof(GLfloat) )
+			
+			glVertexAttribPointer( self.positionIndex, 3, GL_FLOAT, GL_FALSE, byteStride, vertexOffset * sizeof(GLfloat) )
+			glVertexAttribPointer( self.normalIndex, 3, GL_FLOAT, GL_FALSE, byteStride, normalOffset * sizeof(GLfloat) )
+			glVertexAttribPointer( self.colorIndex, 4, GL_FLOAT, GL_FALSE, byteStride, colorOffset * sizeof(GLfloat) )
+			glVertexAttribPointer( self.specularIndex, 1, GL_FLOAT, GL_FALSE, byteStride, specularOffset * sizeof(GLfloat) )
+			glVertexAttribPointer( self.shineIndex, 1, GL_FLOAT, GL_FALSE, byteStride, shineOffset * sizeof(GLfloat) )
+			
+			
+			# If the vertices that define the model have changed, I need to put their new
+			# descriptions into the vertex buffer for the shaders. Otherwise I can  jump
+			# straight to drawing that buffer.
+			
+			if not self.modelSame :
+				
+				if len( self.vertices ) <= self.oldVertexCount :
+					
+					# I can re-use existing buffer memory, but have to re-populate it with
+					# new contents.
+					
+					GLfloatPTR = POINTER( GLfloat )
+					
+					bufferAddress = glMapBuffer( GL_ARRAY_BUFFER, GL_WRITE_ONLY )
+					vertexArray = cast( bufferAddress, GLfloatPTR )
+					
+					if vertexArray != GLfloatPTR() :				# Make sure map produced a non-NULL result
+					
+						vertexIndex = 0
+					
+						for v in self.vertices :
+					
+							vertexArray[ vertexIndex ] = v.x
+							vertexArray[ vertexIndex+1 ] = v.y
+							vertexArray[ vertexIndex+2 ] = v.z
+							vertexArray[ vertexIndex+3 ] = v.nx
+							vertexArray[ vertexIndex+4 ] = v.ny
+							vertexArray[ vertexIndex+5 ] = v.nz
+							vertexArray[ vertexIndex+6 ] = v.red
+							vertexArray[ vertexIndex+7 ] = v.green
+							vertexArray[ vertexIndex+8 ] = v.blue
+							vertexArray[ vertexIndex+9 ] = v.alpha
+							vertexArray[ vertexIndex+10 ] = v.specular
+							vertexArray[ vertexIndex+11 ] = v.shine
+						
+							vertexIndex += pythonStride
+					
+					glUnmapBuffer( GL_ARRAY_BUFFER )
+					
+				
+				else :
+					
+					# I need to allocate a new, bigger, block of memory for the buffer.
+		
+					vertexData = []
+		
+					for v in self.vertices :
+						vertexData += [ v.x, v.y, v.z,
+										v.nx, v.ny, v.nz,
+										v.red, v.green, v.blue, v.alpha,
+										v.specular, v.shine ]
+		
+					vertexArray = ( GLfloat * len(vertexData) )(*vertexData)
+					glBufferData( GL_ARRAY_BUFFER, sizeof(vertexArray), vertexArray, GL_STREAM_DRAW )
+				
+					self.oldVertexCount = len( self.vertices )
+
+			
+			# Actually draw the model.
+			
+			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT )
 			
 			glUniform1i( self.facesLocation, BACK )
 			glDrawArrays( GL_TRIANGLES, 0, len( self.vertices ) )
 			glUniform1i( self.facesLocation, FRONT )
 			glDrawArrays( GL_TRIANGLES, 0, len( self.vertices ) )
+			
+			
+			# At this moment, the model is the same as it was an instant ago when I drew
+			# it.
+			
+			self.modelSame = True
 		
 		
 		# Run Pyglet's event loop, thus running the "draw" handler and then waiting for
@@ -226,12 +308,20 @@ class ScreenRenderer( Renderer ) :
 	
 	
 	
-	# Set the position from which calls to "draw" will view the model.
+	# Set the position from which calls to "draw" (or Pyglet's on_draw callback, if the
+	# actual rendering is happening in an animation loop) will view the model.
 	
 	def viewer( self, x, y, z ) :
 		
-		# All that's appropriate for all screen renderers to do is tell the shaders
-		# where the viewer is.
+		
+		# Give this renderer a viewing and projection transformation suitable for looking
+		# towards the origin from the new position.
+		
+		distance = sqrt( x**2 + y**2 + z**2 )
+		self.setViewingTransformation( self.originView( x, y, z ), self.clipAroundOrigin( distance ) )
+									   
+		
+		# Tell the shaders where the viewer is.
 		
 		positionBuffer = ( GLfloat * 3 )( x, y, z )
 		glUniform3fv( self.viewerLocation, 1, positionBuffer )
@@ -247,6 +337,21 @@ class ScreenRenderer( Renderer ) :
 		glslVersion = glGetString( GL_SHADING_LANGUAGE_VERSION )
 		
 		return "OpenGL " + CStringToPython( glVersion ) + "; GLSL " + CStringToPython( glslVersion )
+	
+	
+	
+	
+	# Add a triangle to this renderer's model, or erase the model. Both of these methods
+	# mostly just do whatever the superclass would do, except that both actions also
+	# represent changes to the model, which the superclass presumably doesn't care about.
+	
+	def triangle( self, v1, v2, v3, material ) :
+		super().triangle( v1, v2, v3, material )
+		self.modelSame = False
+	
+	def eraseModel( self ) :
+		super().eraseModel()
+		self.modelSame = False
 	
 	
 	

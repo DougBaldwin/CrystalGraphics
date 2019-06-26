@@ -1,8 +1,13 @@
-# This program is really a test/demonstration of modeling and rendering a simple
-# crystal via a Python program that ultimately uses the Pyglet rendering library.
-# This particular program, however, interacts with Pyglet through a "Renderer" class
-# whose job is to abstract away from crystal models all the OpenGL mechanics provided
-# by Pyglet.
+# This program is really a test/demonstration of modeling and rendering a simple crystal
+# via Python. The program can display the crystal in several ways, depending on which of
+# several "renderer" objects it uses for final rendering. Users indicate which renderer
+# they want via the "-r" command-line option:
+#   -r rotate - Use a renderer that animates the viewer orbitting around the crystal (or
+#               the crystal rotating beneath the viewer). Default choice.
+#   -r static - Use a renderer that draws a static image of the crystal
+#   -r 3d     - Use a renderer that produces an "STL" file for a 3D printer.
+# So the usage of this program is as in
+#   amethyst.py -r <renderer>
 
 # The image this program generates is a very simple amethyst (i.e., purple quartz)
 # crystal consisting of a hexagonal prism with pyramidal ends. This habit comes from
@@ -17,22 +22,14 @@
 from StaticScreenRenderer import StaticScreenRenderer
 from RotatingScreenRenderer import RotatingScreenRenderer
 from STLRenderer import ASCIISTLRenderer
-from math import pi, sin, cos
+from math import pi, sin, cos, sqrt
+from argparse import ArgumentParser
+import sys
 
 
 
 
 # Main program.
-
-
-# Set up a renderer to draw the crystal.
-
-renderer = RotatingScreenRenderer()
-
-
-# Report the version of any rendering engine or library that the renderer uses.
-
-print( "Renderer version:", renderer.version() )
 
 
 # Basic parameters of the crystal: a and c axis lengths, material properties, key
@@ -47,6 +44,38 @@ topPrismC = 10
 topPyramidC = topPrismC + c
 bottomPrismC = -10
 bottomPyramidC = bottomPrismC - c
+
+
+# Based on the user's request, create the appropriate renderer to draw the crystal.
+
+parser = ArgumentParser()
+parser.add_argument( "-r", action="store", default="rotate", choices=["rotate","static","3d"],
+					 help="Specify rendering to a rotating view, static view, or 3d printer file" )
+
+arguments = parser.parse_args()
+
+viewerX = 0.0							# Initial x coordinate for viewer
+viewerY = topPyramidC + c + 5.0			# Initial viewer y coordinate
+viewerZ = a + 22.0						# Initial z
+
+if arguments.r == "rotate" :
+	renderer = RotatingScreenRenderer( viewerY, sqrt( viewerY**2 + viewerZ**2 ) )
+
+elif arguments.r == "static" :
+	renderer =  StaticScreenRenderer()
+	renderer.viewer( viewerX, viewerY, viewerZ )
+
+elif arguments.r == "3d" :
+	renderer = ASCIISTLRenderer( "amethyst.stl" )
+
+else :
+	print( "Renderer '" + arguments.r + "' must be one of 'rotate', 'static', or '3d'" )
+	sys.exit( 1 )
+
+
+# Report the version of any rendering engine or library that the renderer uses.
+
+print( "Renderer version:", renderer.version() )
 
 
 # Generate the vertices for the triangles that make up the crystal.
@@ -82,5 +111,4 @@ for i in range( 6 ) :
 
 # Draw the crystal.
 
-renderer.viewer( 0.0, topPyramidC + c + 5.0, a + 22.0 )
 renderer.draw()

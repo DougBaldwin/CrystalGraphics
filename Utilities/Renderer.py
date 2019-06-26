@@ -73,8 +73,8 @@ class Renderer :
 	# Initialize a renderer.
 	
 	def __init__( self ) :
+		self.eraseModel()				# Model starts off empty
 	
-		self.vertices = []				# Model starts off empty
 	
 	
 	
@@ -110,6 +110,16 @@ class Renderer :
 	
 	def draw( self ) :
 		pass
+	
+	
+	
+	
+	# Erase the model accumulated in this renderer. Normally this is only useful to
+	# subclasses, because once a client tells a renderer to draw its model the client
+	# doesn't normally get control back.
+	
+	def eraseModel( self ) :
+		self.vertices = []
 	
 	
 	

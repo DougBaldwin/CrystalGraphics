@@ -2,6 +2,8 @@
 
 #Authors: Amelia Mindich and Steven Sicari
 #Last Edited: 3/12/2017
+# Extended June 21, 2019 by Doug Baldwin to use "-r" command-line option to specify a
+#   renderer.
 
 # Copyright 2016 by Steven Sicari and Amelia Mindich (sms40@geneseo.edu).
 # This work is licensed under a Creative Commons Attribution 4.0 International License
@@ -10,17 +12,17 @@
 from StaticScreenRenderer import StaticScreenRenderer
 from RotatingScreenRenderer import RotatingScreenRenderer
 from STLRenderer import ASCIISTLRenderer
-from VectorOps import  scale4H, subtract4, add4
+from VectorOps import scale4H, subtract4, add4
 from SymmetryOps import transform4
-from math import pi, sin, cos
+from math import pi, sin, cos, sqrt
+from argparse import ArgumentParser
+import sys
 
 
-renderer = RotatingScreenRenderer()
-# renderer = ASCIISTLRenderer('Twin.stl')
 
 
-print( "Renderer version:", renderer.version() )
 
+# Basic parameters for the crystals.
 
 a = 10
 c = 15
@@ -31,6 +33,40 @@ topPrismC = 10
 topPyramidC = topPrismC + c
 
 
+# Based on the user's request, create the appropriate renderer to draw the crystal.
+
+parser = ArgumentParser()
+parser.add_argument( "-r", action="store", default="rotate", choices=["rotate","static","3d"],
+					 help="Specify rendering to a rotating view, static view, or 3d printer file" )
+
+arguments = parser.parse_args()
+
+viewerX = 0.0							# Initial x coordinate for viewer
+viewerY = topPyramidC - 15.0			# Initial viewer y coordinate
+viewerZ = a + 50.0						# Initial z
+
+if arguments.r == "rotate" :
+	renderer = RotatingScreenRenderer( viewerY, sqrt( viewerY**2 + viewerZ**2 ) )
+
+elif arguments.r == "static" :
+	renderer =  StaticScreenRenderer()
+	renderer.viewer( viewerX, viewerY, viewerZ )
+
+
+elif arguments.r == "3d" :
+	renderer = ASCIISTLRenderer( 'Twin.stl' )
+
+else :
+	print( "Renderer '" + arguments.r + "' must be one of 'rotate', 'static', or '3d'" )
+	sys.exit( 1 )
+
+
+# Identify the rendering libraries being used.
+
+print( "Renderer version:", renderer.version() )
+
+
+# Build the crystals.
 
 topPyramidVertex = [ 0, topPyramidC, 0, 1 ]
 
@@ -115,5 +151,4 @@ for i in range( 6 ) :
 
 	
 		
-renderer.viewer( 0.0, topPyramidC - 15.0, a + 50.0 )
 renderer.draw()

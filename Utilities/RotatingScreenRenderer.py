@@ -1,44 +1,57 @@
 # Part of a hierarchy of Python classes that render crystals or crystal aggregates to
-# various output devices. This class renders a rotating image to a window, using the GPU
-# rendering pipeline. The rotation is as if the viewer is orbiting the Y axis while
-# looking towards the origin.
+# various output devices. This class renders a rotating image to a window, with optional
+# animation of the model shown in that window. The rotation is as if the viewer is
+# orbiting the Y axis while looking towards the origin. All graphics use the GPU rendering
+# pipeline.
 
-# Copyright (C) 2016 by Doug Baldwin (baldwin@geneseo.edu).
+# Copyright (C) 2016, 2019 by Doug Baldwin (baldwin@geneseo.edu).
 # This work is licensed under a Creative Commons Attribution 4.0 International License
 # (https://creativecommons.org/licenses/by/4.0/)
 
 
-from ScreenRenderer import ScreenRenderer
-from VectorOps import normalize3, orthogonalize3, cross
-import pyglet
-from math import sqrt, atan2, sin, cos, pi, fmod
+from AnimatedScreenRenderer import AnimatedScreenRenderer
+# from VectorOps import normalize3, orthogonalize3, cross
+# import pyglet
+from math import sin, cos, pi, fmod
+# from math import sqrt, atan2, sin, cos, pi, fmod
 
 
 
 
 # The actual renderer class.
 
-class RotatingScreenRenderer( ScreenRenderer ) :
-
-
-
-
-	# Initialize a rotating screen renderer.
+class RotatingScreenRenderer( AnimatedScreenRenderer ) :
 	
-	def __init__( self ) :
+	
+	
+	
+	# The main attributes for a rotating screen renderer, in addition to the inherited
+	# ones, are...
+	#    r, theta, y - The viewer's position, in cylindrical coordinates. Angle theta is
+	#      measured in radians counterclockwise (as seen from above) from the positive z
+	#      axis.
+	#    orbiting - A Boolean value that indicates whether the viewer is orbiting the y
+	#      axis (if true) or is stationary (if false).
+
+
+
+
+	# Initialize a rotating screen renderer. Clients provide the viewer's height (y
+	# coordinate) and distance from the origin, from which the renderer calculates
+	# successive x, y, and z coordinates as the viewer orbits. Since rotating screen
+	# rendering is a special case of animated rendering, clients also have the option of
+	# giving this renderer a callback function for updating the model being rendered. If
+	# clients don't provide this callback the model is whatever was built through calls to
+	# this renderer's "triangle" method before telling it to draw its model.
+	
+	def __init__( self, height, distance, modelCB = None ) :
 		
 		
-		# Initialize general screen renderer features, notably lighting.
+		# Rotating screen renderers are really animated screen renderers with a view
+		# callback that rotates the view around the Y axis, so initialize the superclass
+		# accordingly.
 		
-		light1Pos = normalize3( [ 1.0, 9.0, 2.0 ] )
-		light2Pos = normalize3( [ -1.0, -0.9, -0.05 ] )
-		
-		super().__init__( 0.6,
-						  [ light1Pos[0], light1Pos[1], light1Pos[2],
-							light2Pos[0], light2Pos[1], light2Pos[2],
-							1.0, 0.0, 0.0,
-							1.0, 0.0, 0.0  ],
-						  [ 1.0, 0.5, 0.0, 0.0 ] )
+		super().__init__( modelCB, lambda r, dt : self.orbit( r, dt ) ) 
 		
 		
 		# Install a keyboard callback that toggles orbiting on and off every time the user
@@ -50,99 +63,39 @@ class RotatingScreenRenderer( ScreenRenderer ) :
 		@self.window.event
 		def on_key_press( symbols, modifiers ) :
 			self.orbiting = not self.orbiting
-		
-		
-		# Tell Pyglet to periodically call an animation function that moves this
-		# renderer's viewer around its orbit. Have this function run nominally 40 times
-		# per second, although it may be slightly slower.
-		
-		pyglet.clock.schedule_interval( lambda dt: self.orbit( dt ), 1.0/40.0 )
 			
 		
-		# Set up a default viewer position, just in case someone starts the orbit without
-		# saying where to start from.
+		# Set up the initial viewer position.
 		
-		self.r = 1.0
+		self.r = distance
 		self.theta = 0.0
-		self.y = 1.0
+		self.y = height
 		
-		self.projectionMatrix = self.clipAroundOrigin( sqrt( self.r**2 + self.y**2 ) )
-		
-		self.updatePosition()
+		self.viewer( self.viewerX(), self.y, self.viewerZ() )
 	
 	
 	
 	
-	# Set the position from which the orbit will begin. When clients call "draw," the
-	# view will begin orbiting from here, maintaining its height and distance from the
-	# y axis, but orbiting around the y axis.
+	# Move the viewer along its orbit, simulating the passage of "dt" seconds. Update
+	# the viewing position for renderer "renderer" accordingly. But note that if the
+	# "orbiting" flag is false, the viewer doesn't move.
 	
-	def viewer( self, x, y, z ) :
-		
-		
-		# I record the viewer's position in cylindrical form, so convert (x,y,z) to
-		# that form.
-		
-		self.r = sqrt( x**2 + z**2 )
-		self.theta = atan2( x, z )
-		self.y = y
-		
-		
-		# The viewer's distance from the origin never changes during the orbit, so I can
-		# build the projection part of the viewing transformation now. Doing so saves
-		# redoing it every time I update the view during the orbit.
-		
-		self.projectionMatrix = self.clipAroundOrigin( sqrt( x**2 + y**2 + z**2 ) )
-		
-		
-		# Be sure the viewing parts of the system know about this position.
-		
-		self.updatePosition()
-	
-	
-	
-	
-	# Update the view for a new viewer position, based on the "r," "theta," and "y" member
-	# variables. The view is always towards the origin from the viewer's current position,
-	# with a view volume extending from 1 unit in front of (i.e., towards the origin from)
-	# the viewer and then continuing on 1 unit less than the viewer's distance past the
-	# origin. The front face of this viewing volume is 1 unit wide and high, centered on
-	# the viewer.
-	
-	def updatePosition( self ) :
-		
-		
-		# Set up the world-to-viewer coordinates part of the viewing transformation.
-		# For computing the viewer's x and z coordinates, recall that theta is measured
-		# from the z axis.
-		
-		x = self.r * sin( self.theta )
-		z = self.r * cos( self.theta )
-		
-		viewMatrix = self.originView( x, self.y, z )
-		
-		
-		# Build the complete viewing transformation from the world-to-viewer
-		# transformation and the projection/clipping transformation built in "viewer".
-		
-		self.setViewingTransformation( viewMatrix, self.projectionMatrix )
-		
-		
-		# Be sure the superclass knows where the viewer is now.
-		
-		super(RotatingScreenRenderer,self).viewer( x, self.y, z )
-	
-	
-	
-	
-	# Move the viewer along its orbit, simulating the passage of "dt" seconds. But note
-	# that if the "orbiting" flag is false, the viewer doesn't move.
-	
-	def orbit( self, dt ) :
+	def orbit( self, renderer, dt ) :
 	
 		radiansPerSecond = pi / 10.0;				# Do 1 complete orbit every 20 seconds
 		
 		if self.orbiting :
 			self.theta = fmod( self.theta + radiansPerSecond * dt, 2.0 * pi )
-			self.updatePosition()
-
+			renderer.viewer( self.viewerX(), self.y, self.viewerZ() )
+	
+	
+	
+	
+	# Utility methods for internal use that calculate Cartesian x and z coordinates for
+	# the viewer from this renderer's current r and theta values.
+	
+	def viewerX( self ) :
+		return self.r * sin( self.theta )
+	
+	def viewerZ( self ) :
+		return self.r * cos( self.theta )
