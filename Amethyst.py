@@ -38,7 +38,7 @@ import sys
 a = 4.9133
 c = 5.4053
 
-material = ( 0.58, 0.3, 0.8, 0.68, 0.85, 50.0 )
+material = ( 0.58, 0.3, 0.8, 0.58, 0.85, 50.0 )
 
 topPrismC = 10
 topPyramidC = topPrismC + c

@@ -1,10 +1,10 @@
-# A collection of utility functions for performing vector arithmetic useful in graphics.
-# The vectors that these functions work with are of fixed length, either 3 or 4 elements,
-# represented as Python lists. 3-element vectors are generally vectors in 3-space, which
-# may also represent points, while 4-element lists are 3-space vectors or points in
-# homogeneous form, i.e., those with a 4th component of 0 are vectors (contain only
-# directional information) while those with a 4th component of 1 are points (contain
-# positional information as well as directional).
+# A collection of utility functions for performing vector (and occasionally matrix)
+# arithmetic useful in graphics. The vectors that these functions work with are of fixed
+# length, either 3 or 4 elements, represented as Python lists. 3-element vectors are
+# generally vectors in 3-space, which may also represent points, while 4-element lists are
+# 3-space vectors or points in homogeneous form, i.e., those with a 4th component of 0 are
+# vectors (contain only directional information) while those with a 4th component of 1 are
+# points (contain positional information as well as directional).
 
 # Copyright 2016 by Doug Baldwin.
 # Additional contributions ("transpose" function) by Amelia Mindich.
