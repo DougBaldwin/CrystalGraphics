@@ -10,10 +10,7 @@
 
 
 from AnimatedScreenRenderer import AnimatedScreenRenderer
-# from VectorOps import normalize3, orthogonalize3, cross
-# import pyglet
 from math import sin, cos, pi, fmod
-# from math import sqrt, atan2, sin, cos, pi, fmod
 
 
 

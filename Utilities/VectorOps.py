@@ -12,7 +12,7 @@
 # (https://creativecommons.org/licenses/by/4.0/)
 
 
-from math import sqrt
+from math import sqrt, isclose
 
 
 
@@ -21,6 +21,15 @@ from math import sqrt
 
 def length3( v ) :
 	return sqrt( v[0]**2 + v[1]**2 + v[2]**2 )
+
+
+
+
+# Test whether a 3D vector is (nearly) the zero vector. Return True if so and
+# False if not.
+
+def isZero3( v ) :
+	return isclose( v[0], 0.0 ) and isclose( v[1], 0.0 ) and isclose( v[2], 0.0 )
 
 
 
@@ -113,6 +122,49 @@ def normalize3( v ) :
 
 def orthogonalize3( source, reference ) :
 	return subtract3( source, scale3( reference, dot3( source, reference ) / length3( reference ) ** 2 ) )
+
+
+
+
+# Given two vectors, v1, and v2, of any length, checks to see if they are
+# scalar multiples of each other. Return two results, the first being a scalar
+# k such that if v1 and v2 are scalar multiples of each other, v1 = k v2. The
+# second return value is a Boolean that is True if the vectors really are
+# scalar multiples of each other, and False otherwise; the first result only
+# has a meaningful value if this second result is True.
+
+def checkScalarMultiple( v1, v2 ) :
+	
+	
+	# Start by making sure v1 and v2 are the same length. If not, they can't
+	# be scalar multiples of each other.
+	
+	if len( v1 ) != len( v2 ) :
+		return 0, False
+	
+	
+	# Now find a non-zero element of v2 and use it to compute a scalar that
+	# should multiply v2 to produce v1. If there isn't one, v2 is the 0 vector
+	# and v1 can't possibly be a scalar multiple of it.
+	
+	scalar = None
+	for i in range( len(v2) ) :
+		if v2[ i ] != 0 :
+			scalar = v1[i] / v2[i]
+			break
+	
+	if scalar is None :
+		return 0, False
+	
+	
+	# Check to see if all elements of v1 are the same multiple of the
+	# corresponding element of v2.
+	
+	for i in range( len(v2) ) :
+		if not isclose( v1[i], v2[i] * scalar ) :
+			return 0, False
+	
+	return scalar, True
 
 
 

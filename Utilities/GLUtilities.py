@@ -186,10 +186,10 @@ def CStringToPython( bytes ) :
 
 def pythonStringToGLString( chars ) :
 	
-	 # Encode the Python string of Unicode characters into a Python byte sequence, and
-	 # then turn that into a C string. I use ISO-8859-1 to encode unicode into bytes
-	 # because it can encode all of the first 256 unicode codepoints into bytes (unlike,
-	 # say, UTF-8, which would encode 128 codepoints as single bytes and use multiple
-	 # bytes for the rest).
+	# Encode the Python string of Unicode characters into a Python byte sequence, and
+	# then turn that into a C string. I use ISO-8859-1 to encode unicode into bytes
+	# because it can encode all of the first 256 unicode codepoints into bytes (unlike,
+	# say, UTF-8, which would encode 128 codepoints as single bytes and use multiple
+	# bytes for the rest).
 	
 	return create_string_buffer( chars.encode("ISO-8859-1") )

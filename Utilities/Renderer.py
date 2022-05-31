@@ -25,7 +25,7 @@
 # (https://creativecommons.org/licenses/by/4.0/)
 
 
-from VectorOps import subtract3, cross, normalize3
+from VectorOps import subtract3, cross, normalize3, isZero3
 
 
 
@@ -78,28 +78,45 @@ class Renderer :
 	
 	
 	
-	# Add a flat triangle to the set of triangles in this renderer's model. Since the
-	# triangle is flat (instead of approximating a curved patch) all three vertices
-	# have the same normal, which can be calculated from the triangle's edges. Thus
-	# the only parameters to this method are the triangle's 3 vertices and its material
-	# (which is also constant across the whole triangle). Vertices should be listed in
-	# counterclockwise order as seen from outside the triangle.
+	# Add a flat triangle to the set of triangles in this renderer's model.
+	# However, if the triangle seems to have a side of length 0, silently drop
+	# it because it won't be visible anyhow. Since the triangle is flat
+	# (instead of approximating a curved patch) all three vertices have the
+	# same normal, which can be calculated from the triangle's edges. Thus the
+	# only parameters to this method are the triangle's 3 vertices and its
+	# material (which is also constant across the whole triangle). Vertices
+	# should be listed in counterclockwise order as seen from outside the
+	# triangle.
 	
 	def triangle( self, v1, v2, v3, material ) :
 		
 		
-		# Calculate the triangle's normal as the cross product of its edges. Since
-		# vertices are in counterclockwise order, the outward-pointing normal is
-		# (v3-v2) X (v1-v2).
+		# The triangle's normal will be the cross product of vectors along two
+		# of its edges. But for now, calculate vectors along all three edges so
+		# I can make sure none of them are the zero vector.
 		
-		normal = normalize3( cross( subtract3( v3, v2 ), subtract3( v1, v2 ) ) )
+		edge1 = subtract3( v3, v2 )
+		edge2 = subtract3( v1, v2 )
+		edge3 = subtract3( v3, v1 )
 		
 		
-		# Add 3 vertices for this triangle to this renderer's model
+		# As long as all of the edge vectors are non-zero, I can go ahead and
+		# add the triangle to this renderer.
 		
-		self.vertices = self.vertices + [ Renderer.Vertex( v1, normal, material ),
-										  Renderer.Vertex( v2, normal, material ),
-										  Renderer.Vertex( v3, normal, material ) ]
+		if not isZero3( edge1 ) and not isZero3( edge2 ) and not isZero3( edge3 ):
+		
+			# Since vertices are in counterclockwise order, the actual outward-
+			# pointing normal for the triangle is (v3-v2) X (v1-v2) =
+			# edge1 - edge2.
+			
+			normal = normalize3( cross( edge1, edge2 ) )
+		
+		
+			# Add 3 vertices for this triangle to this renderer's model
+		
+			self.vertices = self.vertices + [ Renderer.Vertex( v1, normal, material ),
+											  Renderer.Vertex( v2, normal, material ),
+											  Renderer.Vertex( v3, normal, material ) ]
 	
 	
 	

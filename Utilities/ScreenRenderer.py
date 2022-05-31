@@ -85,17 +85,17 @@ class ScreenRenderer( Renderer ) :
 		# Create the window, allowing the user to resize it. But as the window resizes,
 		# always draw in a square part, to match a square cross-section of views.
 		
-		self.window = pyglet.window.Window( resizable = True )
+		self.window = pyglet.window.Window( width=512, height=512, resizable = True )
 		
-		@self.window.event
-		def on_resize( width, height ) :
-			if width > height :
-				margin = ( width - height ) // 2
-				glViewport( margin, 0, height, height )
-			else :
-				margin = ( height - width ) // 2
-				glViewport( 0, margin, width, width )
-			return pyglet.event.EVENT_HANDLED
+		# @self.window.event
+		# def on_resize( width, height ) :
+		#	if width > height :
+		#		margin = ( width - height ) // 2
+		#		glViewport( margin, 0, height, height )
+		#	else :
+		#		margin = ( height - width ) // 2
+		#		glViewport( 0, margin, width, width )
+		#	return pyglet.event.EVENT_HANDLED
 		
 		
 		# Install shaders.
