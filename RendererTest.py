@@ -65,7 +65,7 @@ def viewportSize( renderer ) :
 from StaticScreenRenderer import StaticScreenRenderer
 renderer = StaticScreenRenderer()
 
-translucency( renderer )
+viewportSize( renderer )
 
 renderer.viewer( 0.0, 0.0, 2.0 )
 renderer.draw()

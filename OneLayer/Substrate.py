@@ -5,24 +5,23 @@
 #
 # This class is part of my attempt to generate realistic amethyst aggregates by
 # sampling crystal sizes from an appropriate probability distribution. See the
-# project notes from 2021 for more on this project.
+# project notes for more on this project.
 
-# Copyright (C) 2021 by Doug Baldwin (baldwin@geneseo.edu).
+# Copyright (C) 2022 by Doug Baldwin (baldwin@geneseo.edu).
 # This work is licensed under a Creative Commons Attribution 4.0 International License
 # (http://creativecommons.org/licenses/by/4.0/).
 
 # History:
 #
-#   June 2021. Created by Doug Baldwin.
+#   June 2022. Created by Doug Baldwin from an older version that used a simpler representation of polyhedra.
+#
+#   June 2021. Original created by Doug Baldwin.
 
 
 
 
-from Vertex import Vertex
-from Edge import Edge
-from Face import Face
 from Polyhedron import Polyhedron
-from ConvexPolyhedron import ConvexPolyhedron
+from Vertex import Vertex
 
 
 
@@ -37,63 +36,31 @@ class Substrate ( Polyhedron ) :
 	
 	def __init__( self, lowX, highX, lowY, highY, lowZ, highZ ) :
 		
-		
-		# Even though the substrate is a simple shape, for purposes of this
-		# program it's a polyhedron, which is a union of convex polyhedra (in
-		# this case one of them), which in turn are defined by faces, with
-		# edges, which connect vertices. So build up the substrate from those
-		# things.
-		
-		
-		# Vertices:
-		
-		topLeftFront = Vertex( lowX, highY, highZ )
-		topLeftBack = Vertex( lowX, highY, lowZ )
-		topRightFront = Vertex( highX, highY, highZ )
-		topRightBack = Vertex( highX, highY, lowZ )
-		bottomLeftFront = Vertex( lowX, lowY, highZ )
-		bottomLeftBack = Vertex( lowX, lowY, lowZ )
-		bottomRightFront = Vertex( highX, lowY, highZ )
-		bottomRightBack = Vertex( highX, lowY, lowZ )
-		
-		vertices = [ topLeftFront, topLeftBack, topRightFront, topRightBack,
-					 bottomLeftFront, bottomLeftBack, bottomRightFront, bottomRightBack ]
-		
-		
-		# Edges:
-		
-		topFront = Edge( topLeftFront, topRightFront )
-		topRight = Edge( topRightFront, topRightBack )
-		topBack = Edge( topRightBack, topLeftBack )
-		topLeft = Edge( topLeftBack, topLeftFront )
-		bottomFront = Edge( bottomLeftFront, bottomRightFront )
-		bottomRight = Edge( bottomRightFront, bottomRightBack )
-		bottomBack = Edge( bottomRightBack, bottomLeftBack )
-		bottomLeft = Edge( bottomLeftBack, bottomLeftFront )
-		leftFront = Edge( topLeftFront, bottomLeftFront )
-		rightFront = Edge( topRightFront, bottomRightFront )
-		rightBack = Edge( topRightBack, bottomRightBack )
-		leftBack = Edge( topLeftBack, bottomLeftBack )
-		
-		edges = [ topFront, topRight, topBack, topLeft, bottomFront, bottomRight,
-				  bottomBack, bottomLeft, leftFront, rightFront, rightBack, leftBack ]
-		
-		
-		# Faces:
-		
-		top = Face( [ topFront, topRight, topBack, topLeft ] )
-		bottom = Face( [ bottomFront, bottomLeft, bottomBack, bottomRight ] )
-		front = Face( [ leftFront, bottomFront, rightFront, topFront ] )
-		back = Face( [ leftBack, topBack, rightBack, bottomBack ] )
-		left = Face( [ leftBack, bottomLeft, leftFront, topLeft ] )
-		right = Face( [ rightFront, bottomRight, rightBack, topRight ] )
-		
-		faces = [ top, bottom, front, back, left, right ]
-		
-		
-		# Finally, the polyhedra:
-		
-		substrateColor = [ 0.5, 0.5, 0.52, 1.0, 0.05, 1.0 ]
-		
-		cube = ConvexPolyhedron( faces, edges, vertices, substrateColor )
-		super().__init__( [cube] )
+
+		# Build a list of this substrate's vertices.
+
+		vertices = [ Vertex( lowX, lowY, highZ ),				# 0: Left bottom front
+					 Vertex( lowX, lowY, lowZ ),				# 1: Left bottom back
+					 Vertex( lowX, highY, highZ ),				# 2: Left top front
+					 Vertex( lowX, highY, lowZ ),				# 3: Left top back
+					 Vertex( highX, lowY, highZ ),				# 4: Right bottom front
+					 Vertex( highX, lowY, lowZ ),				# 5: Right bottom back
+					 Vertex( highX, highY, highZ ),				# 6: Right top front
+					 Vertex( highX, highY, lowZ ) ]				# 7: Right top back
+
+
+		# List the indices of the vertices that define each face.
+
+		faces = [ [0, 2, 3, 1],							# Left
+				  [0, 4, 6, 2],							# Front
+				  [4, 5, 7, 6],							# Right
+				  [5, 1, 3, 7],							# Back
+				  [2, 6, 7, 3],							# Top
+				  [0, 1, 5, 4] ]						# Bottom
+
+
+		# Use the vertices and faces to initialize.
+
+		substrateColor = [0.5, 0.5, 0.52, 1.0, 0.05, 1.0]
+
+		super().__init__( vertices, faces, substrateColor )

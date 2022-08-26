@@ -1,27 +1,38 @@
 # A class that represents dictionaries that store edges from a polyhedron, with
-# vertices as keys. These dictionaries differ from standard Python dictionaries
-# by having the equality test for keys be approximate equality rather than
-# exact.
+# vertices as keys. Each edge in one of these dictionaries appears twice, once
+# for each of its ends. Clients can thus search for an edge by either of its
+# endpoints, and there is also a search method that takes two endpoints as
+# arguments, locating an edge between those points.
 
-# Copyright (C) 2021 by Doug Baldwin (baldwin@geneseo.edu).
+# Copyright (C) 2022 by Doug Baldwin (baldwin@geneseo.edu).
 # This work is licensed under a Creative Commons Attribution 4.0 International License
 # (http://creativecommons.org/licenses/by/4.0/).
 
 # History:
 #
-#   July 2021. Created by Doug Baldwin.
+#   June 2022. Created by Doug Baldwin, based on an earlier version with
+#     somewhat different functionality.
+#
+#   July 2021. Original version created by Doug Baldwin.
+
+
+
+
+from PythonUtilities import pickElement
 
 
 
 
 class EdgeDictionary :
-	
-	
-	
-	
-	# Internally, I represent an edge dictionary as a list of vertex/edge
-	# tuples. I store this list in attribute "entries"
-	
+
+
+
+
+	# I represent edge dictionaries as Python dictionaries that map the
+	# vertices at the ends of an edge to the edge. Each edge in an edge
+	# dictionary will thus appear twice in this Python dictionary, once for
+	# each of its ends. The Python dictionary is attribute "edges".
+
 	
 	
 	
@@ -29,106 +40,108 @@ class EdgeDictionary :
 	
 	def __init__( self ) :
 		
-		self.entries = []
-	
-	
-	
-	
-	# Generate a human-readable string representation of this edge dictionary.
-	# That representation focuses on the fact that this is an edge dictionary
-	# and its vertex-edge mapping.
-	
-	def __str__( self ) :
-		
-		rep = "<EdgeDictionary " + hex( hash(self) ) + " ="
-		
-		for e in self.entries :
-			rep += " " + str( e[0] ) + ": " + str( e[1] )
-		
-		return rep + ">"
-	
-	
-	
-	
-	# Add an edge to a dictionary, using a specified vertex as its key. If the
-	# edge is already in the dictionary with a key near the given one, raise a
-	# "KeyError" exception. Otherwise, this changes the dictionary, but has no
-	# explicit return value.
-	
-	def add( self, vertex, edge ) :
-		
-		
-		# Check that the vertex/edge pair is not already in the dictionary,
-		# adding it if not.
-		
-		i = self.position( vertex )
-		
-		if i < 0 :
-			self.entries.append( ( vertex, edge ) )
-		else :
-			raise KeyError( "{} duplicates existing key {}".format( vertex, self.entries[i][0] ) )
-	
-	
-	
-	
-	# Search an edge dictionary for a given vertex, and return the associated
-	# edge. If no vertex in the dictionary is near the desired one, raise a
-	# "KeyError" exception.
-	
-	def find( self, vertex ) :
-		
-		i = self.position( vertex )
-		
-		if i >= 0 :
-			return self.entries[i][1]
-		else :
-			raise KeyError( "{} not in dictionary".format( vertex ) )
-	
-	
-	
-	
-	# Return the number of entries in this edge dictionary.
-	
-	def size( self ) :
-		
-		return len( self.entries )
-	
-	
-	
-	
-	# Return a list of all the vertices that appear as keys in this edge
-	# dictionary.
-	
-	def keys( self ) :
-		
-		return [ pair[0] for pair in self.entries ]
-	
-	
-	
-	
-	# A helper method that searches for a vertex in this edge dictionary, and
-	# returns its position. If no vertex close to the desired one is in the
-	# dictionary, this returns -1.
-	
-	def position( self, vertex ) :
-		
-		
-		# Loop through the dictionary, checking for tuples whose vertex member
-		# has x, y, and z values close to those of the desired vertex. Count
-		# how many tuples I pass along the way.
-		
-		p = 0
-		
-		for pair in self.entries :
-			
-			if pair[0].isCloseTo( vertex ) :
-				return p
-			
-			else :
-				p += 1
-		
-		
-		# I've checked every entry in this dictionary and none matched the
-		# vertex I want.
-		
-		return -1
+		self.edges = {}
+
+
+
+
+	# Search a dictionary for an edge between 2 given vertices. If there are
+	# multiple such edges, return any one of them; if there are none, return
+	# None.
+
+	def find2( self, vertex1, vertex2 ) :
+
+
+		# If both vertices are in the dictionary, and the intersection of their
+		# edge sets isn't empty, return an arbitrary element of that
+		# intersection (by returing the first thing an iterator over the
+		# intersection would return). Otherwise, return None.
+
+		try :
+			edges = self.edges[vertex1] & self.edges[vertex2]
+			return next( iter(edges), None )
+
+		except KeyError :
+			return None
+
+
+
+
+	# Search this dictionary for all edges incident on a given vertex,
+	# returning a list of those edges. If there's no entry for the vertex at
+	# all, return an empty list.
+
+	def find1( self, vertex ) :
+
+		try :
+			return list( self.edges[vertex] )
+
+		except KeyError :
+			return []
+
+
+
+
+	# Insert an edge into a dictionary. This modifies the dictionary, but has
+	# no explicit return value.
+
+	def insert( self, newEdge ) :
+
+
+		# Insert the new edge into the Python dictionary at each of its ends.
+
+		self.insertAtPoint( newEdge, newEdge.end1 )
+		self.insertAtPoint( newEdge, newEdge.end2 )
+
+
+
+
+	# Pick an arbitrary edge out of this dictionary and return it. If the
+	# dictionary is empty, return None.
+
+	def element( self ) :
+
+
+		# Pull any value out of the vertices-to-edges map. That value will be a
+		# set of edges, so pull any value out of it to return.
+
+		try :
+			edges = pickElement( self.edges.values() )
+			return pickElement( edges )
+
+		except StopIteration :
+			return None
+
+
+
+
+	# Test to see if this edge dictionary is empty, returning True if so and
+	# False otherwise.
+
+	def isEmpty( self ) :
+
+
+		# For now, assume the dictionary is empty.
+
+		print( "EdgeDictionary.isEmpty assuming {} is empty".format( self ) )
+		return True
+
+
+
+
+	# A utility method that inserts an edge into this edge dictionary's Python
+	# dictionary at a specific point. This method modifies the edge dictionary,
+	# but has no explicit return value.
+
+	def insertAtPoint( self, edge, point ) :
+
+
+		# If the Python dictionary has an entry for this point, then that entry
+		# should be a list. Append this edge to that list. Otherwise create a
+		# list containing just this edge and insert it into the Python
+		# dictionary.
+
+		try :
+			self.edges[ point ] |= { edge }
+		except KeyError :
+			self.edges[ point ] = { edge }

@@ -124,6 +124,8 @@ for crystalSize in sizes :
 	azimuth = azimuthDistribution.sample()
 	
 	newCrystal = Amethyst( place, polar, azimuth, crystalSize )
+
+	print( "\tCrystal at ({0[0]:.3}, {0[1]:.3}, {0[2]:.3}) with polar angle {1} and azimuth angle {2}".format( place, polar, azimuth ) )
 	
 	
 	# Every crystal gets clipped against the substrate.
