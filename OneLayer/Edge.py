@@ -19,13 +19,23 @@
 
 
 
-from PythonUtilities import pickElement
+from EdgeDictionary import EdgeDictionary
+from VectorOps import cross
 from math import isclose
 
 
 
 
 class Edge :
+
+
+
+
+	# I keep track of all edges ever created in order to see if attempts to
+	# join 2 edges during polyhedron or polygon splitting can be satisfied by
+	# something that already exists, rather than needing a new edge.
+
+	allEdges = EdgeDictionary()
 
 
 
@@ -40,35 +50,22 @@ class Edge :
 	#   - back. The back sub-edge or None.
 	#   - splitterVertex. The vertex at which the front and back sub-edges
 	#     meet, or None if this edge isn't split into sub-edges.
-	#   - parents. If this edge is a child of one or more split edges, a set
-	#     of those parents. The set is empty if this edge isn't a result of
-	#     splitting.
 
 	
 	
 	
 	# Initialize an unsplit edge, possibly as a part of some other edge.
 	
-	def __init__( self, vertex1, vertex2, parent = None ) :
+	def __init__( self, vertex1, vertex2 ) :
 		
 		self.end1 = vertex1
 		self.end2 = vertex2
-
-		self.parents = { parent } if parent is not None else set()
 
 		self.front = None
 		self.back = None
 		self.splitterVertex = None
 
-
-
-
-	# Add a parent to this edge's set of parents. This method changes the edge,
-	# but doesn't have any explicit return value.
-
-	def addParent( self, newParent ) :
-
-		self.parents.add( newParent )
+		Edge.allEdges.insert( self )
 
 
 
@@ -146,8 +143,8 @@ class Edge :
 
 				# The plane non-trivially splits the edge.
 
-				sub1 = Edge( self.end1, splitterVertex, self )
-				sub2 = Edge( self.end2, splitterVertex, self )
+				sub1 = Edge( self.end1, splitterVertex )
+				sub2 = Edge( self.end2, splitterVertex )
 				if side1 > 0 :
 					self.front = sub1
 					self.back = sub2
@@ -163,7 +160,7 @@ class Edge :
 		else :
 
 			# For an edge that has already been split, the plane can do one of
-			# 4 things, each with its corresponding result:
+			# 5 things, each with its corresponding result:
 			#   1. Split the front part of the edge. Return a new split edge
 			#      object, combining the split front part and the unsplit back.
 			#      Note that "front" and "back" as labels for the parts of the
@@ -308,6 +305,69 @@ class Edge :
 
 
 
+	# Extend this edge into another, returning the result as a new edge. This
+	# edge and the one it's extended with must have a vertex in common. It's
+	# the client's responsibility to be sure the edges really are colinear
+	# though. The result is a new split edge, with this edge as the front part
+	# of the split, the other one as the back, and the shared vertex as the
+	# splitting vertex. If this edge and the extension don't share a vertex,
+	# this method raises a ValueError exception.
+
+	def extendWith( self, extension ) :
+
+
+		# Figure out which vertex is the shared one, and therefore what new
+		# edge to return, or realize that there's no shared vertex at all.
+
+		if self.hasEnd( extension.end1 ) :
+			return makeSplitEdge( self, extension, extension.end1 )
+
+		elif self.hasEnd( extension.end2 ) :
+			return makeSplitEdge( self, extension, extension.end2 )
+
+		else :
+			raise ValueError( "Edges have no common vertex in Edge.extendWith" )
+
+
+
+
+	# Find a longer edge ("parent") that equals the union of this edge with
+	# another. The other edge must share an endpoint with this one so that
+	# their union can be a single contiguous edge. Return the parent if there
+	# is one, otherwise return None.
+
+	def commonParent( self, other ) :
+
+
+		# Check that the edges are parallel. If they aren't, there's no way a
+		# single edge can be their union. But if they are parallel, the next
+		# check (that they share a point) will mean that they're colinear, and
+		# so some other edge could be their union.
+
+		if not self.isParallelTo( other ) :
+			return None
+
+
+		# Find the endpoint that the edges share. Return None if there isn't
+		# one.
+
+		if other.hasEnd( self.end1 ) :
+			sharedEnd = self.end1
+		elif other.hasEnd( self.end2 ) :
+			sharedEnd = self.end2
+		else :
+			return None
+
+
+		# See if the set of known edges has an edge that runs between the ends
+		# of the two edges opposite their shared end. Return that edge if so,
+		# otherwise return None.
+
+		return Edge.allEdges.find2( self.oppositeFrom( sharedEnd ), other.oppositeFrom( sharedEnd ) )
+
+
+
+
 	# Return the vertex at the opposite end of this edge from the given vertex.
 
 	def oppositeFrom( self, v ) :
@@ -342,43 +402,6 @@ class Edge :
 
 
 
-	# Extend this edge into another, returning the result as a new edge. This
-	# edge and the one it's extended with must have a vertex in common. It's
-	# the client's responsibility to be sure the edges really are colinear
-	# though. The result is a new split edge, with this edge as the front part
-	# of the split, the other one as the back, and the shared vertex as the
-	# splitting vertex. If this edge and the extension don't share a vertex,
-	# this method raises a ValueError exception.
-
-	def extendWith( self, extension ) :
-
-
-		# Figure out which vertex is the shared one, and therefore what new
-		# edge to return, or realize that there's no shared vertex at all.
-
-		if self.hasEnd( extension.end1 ) :
-			return makeSplitEdge( self, extension, extension.end1 )
-
-		elif self.hasEnd( extension.end2 ) :
-			return makeSplitEdge( self, extension, extension.end2 )
-
-		else :
-			raise ValueError( "Edges have no common vertex in Edge.extendWith" )
-
-
-
-
-	# Find a parent that this edge has in common with another. Return the
-	# parent if there is one, otherwise return None.
-
-	def commonParent( self, other ) :
-
-		allCommonParents = self.parents & other.parents
-		return pickElement( allCommonParents ) if len( allCommonParents ) > 0 else None
-
-
-
-
 	# Check to see if a given vertex is one of the ends of an edge. Return True
 	# if it is and False if not.
 
@@ -386,6 +409,27 @@ class Edge :
 
 		return self.end1 is vertex or self.end2 is vertex
 
+
+
+
+	# Determine whether this edge is parallel to another, returning True if so
+	# and False if not.
+
+	def isParallelTo( self, other ) :
+
+
+		# Determine whether the edges are parallel by checking to see if the
+		# cross product of the vectors along them is 0 (to within some roundoff
+		# tolerance).
+
+		myDirection = [ self.end2.x - self.end1.x,  self.end2.y - self.end1.y,  self.end2.z - self.end1.z ]
+		otherDirection = [ other.end2.x - other.end1.x,  other.end2.y - other.end1.y,  other.end2.z - other.end1.z ]
+		product = cross( myDirection, otherDirection )
+
+		zeroTolerance = 1e-9
+		return     isclose( product[0], 0.0, abs_tol=zeroTolerance ) \
+			   and isclose( product[1], 0.0, abs_tol=zeroTolerance ) \
+			   and isclose( product[2], 0.0, abs_tol=zeroTolerance )
 
 
 
@@ -403,9 +447,6 @@ def makeSplitEdge( newFront, newBack, newSplitter ) :
 	newEdge.front = newFront
 	newEdge.back = newBack
 	newEdge.splitterVertex = newSplitter
-
-	newFront.addParent( newEdge )
-	newBack.addParent( newEdge )
 
 	return newEdge
 

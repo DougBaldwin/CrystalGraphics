@@ -16,7 +16,8 @@
 
 from Vertex import Vertex
 from VectorOps import dot3
-from math import isclose
+from math import isclose, fabs, fsum
+from sys import float_info
 
 
 
@@ -28,7 +29,16 @@ class Plane :
 
     # Internally I represent planes by the coefficients of their equation,
     # Ax + By + Cz = D. I store each coefficient in an attribute of the same
-    # name.
+    # name. I normalize planes when I create them so that the largest
+    # absolute value of any coefficient is 1.
+
+
+    # Considering that normalization means that the coefficients of plane
+    # equations are "about" 1, I consider values within less than 10^-10 of
+    # each other to be the same for purposes of approximate equality tests in
+    # this class.
+
+    closeness = 1e-10
 
 
 
@@ -37,10 +47,26 @@ class Plane :
 
     def __init__( self, A, B, C, D ) :
 
-        self.A = A
-        self.B = B
-        self.C = C
-        self.D = D
+
+        # Figure out which coefficient is largest, for normalization. Use
+        # absolute values so that normalization doesn't change the sign of
+        # coefficients and thus the direction of the plane's normal.
+
+        maxCoeff = fabs( A )
+        if fabs(B) > maxCoeff :
+            maxCoeff = fabs( B )
+        if fabs(C) > maxCoeff :
+            maxCoeff = fabs( C )
+        if fabs(D) > maxCoeff :
+            maxCoeff = fabs( D )
+
+
+        # Save normalized coefficients in the appropriate attributes.
+
+        self.A = A / maxCoeff
+        self.B = B / maxCoeff
+        self.C = C / maxCoeff
+        self.D = D / maxCoeff
 
 
 
@@ -53,7 +79,7 @@ class Plane :
         # From the equation for a plane, this plane contains the point if the
         # the point's coordinates satisfy Ax + By + Cz = D.
 
-        return isclose( self.A * point.x + self.B * point.y + self.C * point.z, self.D )
+        return isclose( self.planeNumber( point.x, point.y, point.z ), self.D, abs_tol = Plane.closeness )
 
 
 
@@ -83,11 +109,11 @@ class Plane :
         # coefficient, the point is in front of the plane; if less, the point
         # is in back of the plane, and if equal the point is in the plane.
 
-        product = self.A * point.x + self.B * point.y + self.C * point.z
+        planeNumber = self.planeNumber( point.x, point.y, point.z )
 
-        if isclose( product, self.D ) :
+        if isclose( planeNumber, self.D, abs_tol = Plane.closeness ) :
             return 0
-        elif product > self.D :
+        elif planeNumber > self.D :
             return 1
         else :
             return -1
@@ -108,13 +134,14 @@ class Plane :
         # plane's equation. See project notes from June 23, 2017 for the
         # derivation of the equation I use.
 
-        divisor = self.A * ( point2.x - point1.x ) + self.B * ( point2.y - point1.y ) + self.C * ( point2.z - point1.z )
+        divisor = self.planeNumber( point2.x - point1.x, point2.y - point1.y, point2.z - point1.z )
 
-        if isclose( divisor, 0.0 ) :
+        if isclose( divisor, 0.0, abs_tol = Plane.closeness ) :
             # Line segment is parallel to plane, assume no intersection.
             return None
 
-        t = ( self.D - self.A * point1.x - self.B * point1.y - self.C * point1.z ) / divisor
+        numerator = self.D - self.planeNumber( point1.x, point1.y, point1.z )
+        t = numerator / divisor
 
 
         # What I return depends on the t at which the intersection occurs:
@@ -125,7 +152,7 @@ class Plane :
         #   - If t is outside the interval [0,1], then there's no intersection
         #     within the segment.
 
-        if isclose( t, 0.0 ) :
+        if isclose( t, 0.0, abs_tol = Plane.closeness ) :
             return point1
 
         elif isclose( t, 1.0 ) :
@@ -148,3 +175,27 @@ class Plane :
     def normal( self ) :
 
         return [ self.A, self.B, self.C, 0.0 ]
+
+
+
+
+    # Calculate Ax + By + Cz, i.e., the "plane number" for this plane and the
+    # x, y, and z values provided by the client. Do not include terms whose
+    # coefficient in the plane is less than the least significant bit of the
+    # largest coefficient (which is 1, thanks to normalization), as those
+    # coefficients are so small that I consider them to be 0 albeit with some
+    # roundoff error.
+
+    def planeNumber( self, x, y, z ) :
+
+        terms = []
+
+        def pushTerm( coeff, component ) :
+            if fabs(coeff) > float_info.epsilon :
+                terms.append( coeff * component )
+
+        pushTerm( self.A, x )
+        pushTerm( self.B, y )
+        pushTerm( self.C, z )
+
+        return fsum( terms )

@@ -186,18 +186,7 @@ class Polygon :
 
             else :
 
-                # Case(s) I haven't figured out how to handle yet.
-
-                edgeFormat = "\t\t{0} ({0.x:.3},{0.y:.3},{0.z:.3}) to {1} ({1.x:.3},{1.y:.3},{1.z:.3})"
-                print( "Polygon.split not building result of splitting {0} by {1.A:.3}x + {1.B:.3}y + {1.C:.3}z = {1.D:.3}".format( self, plane ) )
-                print( "\tfrom front edges..." )
-                for e in frontEdges :
-                    print( edgeFormat.format( e.end1, e.end2 ) )
-                print( "\tback edges..." )
-                for e in backEdges :
-                    print( edgeFormat.format( e.end1, e.end2 ) )
-                print( "\tand splitter vertices {}".format( splitterVertices ) )
-
+                raise ValueError( "First split of polygon doesn't match any known split rule." )
                 return None, None, None
 
 
