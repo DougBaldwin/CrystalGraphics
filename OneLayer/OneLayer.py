@@ -92,7 +92,7 @@ for crystalSize in sizes :
 	
 	# Trace for debugging.
 	
-	print( "OneLayer placing crystal of size {}".format( crystalSize ) )
+	print( "OneLayer placing crystal of size {:.4}".format( crystalSize ) )
 	
 	
 	# Find a location for this crystal.
@@ -125,7 +125,7 @@ for crystalSize in sizes :
 	
 	newCrystal = Amethyst( place, polar, azimuth, crystalSize )
 
-	print( "\tCrystal at ({0[0]:.3}, {0[1]:.3}, {0[2]:.3}) with polar angle {1} and azimuth angle {2}".format( place, polar, azimuth ) )
+	print( "\tCrystal at ({0[0]:.4}, {0[1]:.4}, {0[2]:.4}) with polar angle {1:.4} and azimuth angle {2:.4}".format( place, polar, azimuth ) )
 	
 	
 	# Every crystal gets clipped against the substrate.
