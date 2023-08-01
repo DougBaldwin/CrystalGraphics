@@ -1,4 +1,4 @@
-#version 120
+#version 140
 // A fragment shader for programs that use OpenGL to render crystals or aggregates.
 
 // Copyright (C) 2016 by Doug Baldwin.
@@ -34,12 +34,17 @@ const int BOTH = 3;
 // Inputs to this shader that come directly from the vertex shader. Note that the normal
 // and viewer vectors are still in global coordinates.
 
-varying vec3 normal;					// Unit normal to surface
-varying vec3 viewerVector;				// Unit vector pointing towards viewer
+in vec3 normal;						// Unit normal to surface
+in vec3 viewerVector;				// Unit vector pointing towards viewer
 
-varying vec4 fragmentColor;				// Coefficients of diffuse reflection and alpha
-varying float fragmentKs;				// Coefficient of specular reflection
-varying float fragmentShine;			// Shininess exponent
+in vec4 fragmentColor;				// Coefficients of diffuse reflection and alpha
+in float fragmentKs;				// Coefficient of specular reflection
+in float fragmentShine;				// Shininess exponent
+
+
+// The only output from the shader is the color for this fragment.
+
+out vec4 finalColor;
 
 
 // This shader's main job is to carry out the lighting calculations that determine the
@@ -99,7 +104,7 @@ void main() {
 			}
 		}
 
-		gl_FragColor = vec4( baseColor, fragmentColor.a );
+		finalColor = vec4( baseColor, fragmentColor.a );
 	}
 	else {
 		discard;

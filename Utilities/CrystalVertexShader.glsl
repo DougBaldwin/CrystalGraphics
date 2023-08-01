@@ -1,4 +1,4 @@
-#version 120
+#version 140
 // A vertex shader for programs that use OpenGL to draw crystals or aggregates. This
 // shader work with a matching fragment shader to provide Phong shaded renderings of
 // translucent objects.
@@ -12,11 +12,11 @@
 
 // Data clients provide about each vertex:
 
-attribute vec3 vertexPosition;					// (x,y,z) coordinates of vertex
-attribute vec3 vertexNormal;					// Normal vector
-attribute vec4 vertexColor;						// Coefficients of diffuse reflection and alpha
-attribute float ks;								// Coefficient of specular reflection
-attribute float shine;							// Shininess exponent
+in vec3 vertexPosition;					// (x,y,z) coordinates of vertex
+in vec3 vertexNormal;					// Normal vector
+in vec4 vertexColor;					// Coefficients of diffuse reflection and alpha
+in float ks;							// Coefficient of specular reflection
+in float shine;							// Shininess exponent
 
 
 // Clients provide this shader with a single matrix that does all modeling, viewing,
@@ -33,11 +33,11 @@ uniform vec3 viewerPosition;
 
 // Information passed to the fragment shader.
 
-varying vec3 normal;					// Normal vector
-varying vec4 fragmentColor;				// (R,G,B) coefficients of diffuse reflection, and alpha
-varying float fragmentKs;				// Coefficient of specular reflection
-varying float fragmentShine;			// Shininess exponent
-varying vec3 viewerVector;				// Unit vector pointing towards viewer
+out vec3 normal;						// Normal vector
+out vec4 fragmentColor;					// (R,G,B) coefficients of diffuse reflection, and alpha
+out float fragmentKs;					// Coefficient of specular reflection
+out float fragmentShine;				// Shininess exponent
+out vec3 viewerVector;					// Unit vector pointing towards viewer
 
 
 
