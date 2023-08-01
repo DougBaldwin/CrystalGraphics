@@ -15,6 +15,8 @@
 #
 #   May 2017 -- Modified by Doug Baldwin to look for shaders in whatever directory this
 #     module was loaded from, regardless of what the working directory might be.
+#
+#   August 2023 -- Modified by Doug Baldwin to work with shaders as defined by GLSL 1.40.
 
 
 from Renderer import Renderer
@@ -23,7 +25,7 @@ from GLUtilities import PROGRAM, GLError, readShader, compileShader, abortOnShad
 						getUniformLocation, getAttributeIndex, CStringToPython
 import pyglet
 from pyglet.gl import *
-from ctypes import POINTER, pointer, sizeof, cast
+from ctypes import POINTER, pointer, sizeof, cast, byref
 from math import sqrt
 import os
 import time							# For performance testing
@@ -177,16 +179,18 @@ class ScreenRenderer( Renderer ) :
 
 		
 		# Give this renderer an "on_draw" handler that builds and draws an OpenGL vertex
-		# buffer that contains the information about each vertex in the model. For now,
-		# that information is the x, y, and z coordinates, normal, and red, green, blue,
-		# and alpha color components of the vertex. Each vertex's data is contiguous in
-		# the buffer, which means that the corresponding OpenGL vertex, color, and other
-		# arrays have non-0 strides between their elements. For best (but not necessarily
-		# perfect) translucency effects, I draw the vertex buffer in 2 passes, the first
-		# drawing back faces and the second drawing front faces. I also set up as much
-		# OpenGL state as possible, namely the ID for the vertex buffer and enabling the
-		# attributes my shader uses, before the "on_draw" function rather than inside it,
-		# to avoid doing those things more often than necessary.
+		# buffer that contains the information about each vertex in the model. The vertex
+		# buffer needs to be managed by a vertex array, although I don't do more with that
+		# array than create it. The vertex information that goes in the vertex buffer is
+		# the x, y, and z coordinates, normal, and red, green, blue, and alpha color
+		# components of the vertex. Each vertex's data is contiguous in the buffer, which
+		# means that the corresponding OpenGL vertex, color, and other arrays have non-0
+		# strides between their elements. For best (but not necessarily perfect)
+		# translucency effects, I draw the vertex buffer in 2 passes, the first drawing
+		# back faces and the second drawing front faces. I also set up as much OpenGL
+		# state as possible, namely the IDs for the vertex array and buffer, and enabling
+		# the attributes my shader uses, before the "on_draw" function rather than inside
+		# it, to avoid doing those things more often than necessary.
 		
 		FRONT = 1						# Code that tells shader to draw front faces
 		BACK = 2						# Code for back faces
@@ -198,9 +202,13 @@ class ScreenRenderer( Renderer ) :
 		colorOffset = 6									# Offset for RGB color components
 		specularOffset = 10								# Offset for coefficient of specular reflection
 		shineOffset = 11								# Offset for shininess exponent
+		
+		arrayID = GLuint( 0 )
+		glGenVertexArrays( 1, byref(arrayID) )
+		glBindVertexArray( arrayID )
 			
 		bufferID = GLuint( 0 )
-		glGenBuffers( 1, pointer(bufferID) )
+		glGenBuffers( 1, byref(bufferID) )
 			
 		glEnableVertexAttribArray( self.positionIndex )
 		glEnableVertexAttribArray( self.normalIndex )
@@ -212,6 +220,7 @@ class ScreenRenderer( Renderer ) :
 		@self.window.event
 		def on_draw() :
 			
+			glBindVertexArray( arrayID )
 			glBindBuffer( GL_ARRAY_BUFFER, bufferID )
 			
 			glVertexAttribPointer( self.positionIndex, 3, GL_FLOAT, GL_FALSE, byteStride, vertexOffset * sizeof(GLfloat) )
