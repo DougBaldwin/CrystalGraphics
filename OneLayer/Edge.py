@@ -57,7 +57,15 @@ class Edge :
 	# Initialize an unsplit edge, possibly as a part of some other edge.
 	
 	def __init__( self, vertex1, vertex2 ) :
-		
+
+		# For debugging, check to see if the new edge duplicates an edge that
+		# already exists.
+		if Edge.allEdges.find2( vertex1, vertex2 ) :
+			raise RuntimeError( "Creating edge that already exists." )
+
+
+		# The new edge is unique, so finish initializing it.
+
 		self.end1 = vertex1
 		self.end2 = vertex2
 
@@ -332,9 +340,10 @@ class Edge :
 
 
 	# Find a longer edge ("parent") that equals the union of this edge with
-	# another. The other edge must share an endpoint with this one so that
-	# their union can be a single contiguous edge. Return the parent if there
-	# is one, otherwise return None.
+	# another. The other edge must share an endpoint with this one, and be
+	# parallel to this one, so that their union can be a single contiguous
+	# edge. Return the parent if there is one or I can create one, otherwise
+	# return None.
 
 	def commonParent( self, other ) :
 
@@ -361,9 +370,15 @@ class Edge :
 
 		# See if the set of known edges has an edge that runs between the ends
 		# of the two edges opposite their shared end. Return that edge if so,
-		# otherwise return None.
+		# otherwise (since I now know that the edges are parallel and share an
+		# endpoint), create a new edge.
 
-		return Edge.allEdges.find2( self.oppositeFrom( sharedEnd ), other.oppositeFrom( sharedEnd ) )
+		existingParent = Edge.allEdges.find2( self.oppositeFrom( sharedEnd ), other.oppositeFrom( sharedEnd ) )
+
+		if existingParent :
+			return existingParent
+		else :
+			return self.extendWith( other )
 
 
 
@@ -436,19 +451,26 @@ class Edge :
 # An alternative way of creating edges, namely ones that are split from the
 # start. So this function takes the new edge's front and back parts, and the
 # vertex that separates them, and returns an edge made from those parts, with
-# endpoints properly sorted out.
+# endpoints properly sorted out. If such an edge already exists, return it,
+# otherwise make a new edge.
 
 def makeSplitEdge( newFront, newBack, newSplitter ) :
 
 	frontEnd = newFront.oppositeFrom( newSplitter )
 	backEnd = newBack.oppositeFrom( newSplitter )
 
-	newEdge = Edge( frontEnd, backEnd )
-	newEdge.front = newFront
-	newEdge.back = newBack
-	newEdge.splitterVertex = newSplitter
+	existingEdge = Edge.allEdges.find2( frontEnd, backEnd )
 
-	return newEdge
+	if existingEdge :
+		return existingEdge
+
+	else :
+		newEdge = Edge( frontEnd, backEnd )
+		newEdge.front = newFront
+		newEdge.back = newBack
+		newEdge.splitterVertex = newSplitter
+
+		return newEdge
 
 
 

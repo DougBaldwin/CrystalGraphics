@@ -62,6 +62,15 @@ class Polygon :
         self.splitterEdge = None
 
 
+        # For debugging, check to see if any consecutive edges are parallel.
+
+        nEdges = len( self.edges )
+        for i in range( nEdges ) :
+            next = ( i + 1 ) % nEdges
+            if self.edges[i].isParallelTo( self.edges[next] ) :
+                raise RuntimeError( "Polygon edges {} and {} are parallel".format( self.edges[i], self.edges[next] ) )
+
+
 
 
     # Split a polygon with a plane. This method modifies the polygon to reflect
@@ -256,7 +265,7 @@ class Polygon :
                     # front of a new split polygon, and similarly for the back.
                     return makeSplitPolygon( frontFront, backFront, frontFront.sharedEdge(backFront) ), \
                            makeSplitPolygon( frontBack, backBack, frontBack.sharedEdge(backBack) ), \
-                           frontSplitter.extendWith( backSplitter )
+                           frontSplitter.commonParent( backSplitter )
 
                 else :
 

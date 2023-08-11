@@ -15,7 +15,6 @@
 
 
 from Vertex import Vertex
-from VectorOps import dot3
 from math import isclose, fabs, fsum
 from sys import float_info
 
@@ -79,7 +78,7 @@ class Plane :
         # From the equation for a plane, this plane contains the point if the
         # the point's coordinates satisfy Ax + By + Cz = D.
 
-        return isclose( self.planeNumber( point.x, point.y, point.z ), self.D, abs_tol = Plane.closeness )
+        return isclose( self.planeZero( point.x, point.y, point.z ), 0.0, abs_tol = Plane.closeness )
 
 
 
@@ -109,11 +108,11 @@ class Plane :
         # coefficient, the point is in front of the plane; if less, the point
         # is in back of the plane, and if equal the point is in the plane.
 
-        planeNumber = self.planeNumber( point.x, point.y, point.z )
+        planeNumber = self.planeZero( point.x, point.y, point.z )
 
-        if isclose( planeNumber, self.D, abs_tol = Plane.closeness ) :
+        if isclose( planeNumber, 0.0, abs_tol = Plane.closeness ) :
             return 0
-        elif planeNumber > self.D :
+        elif planeNumber > 0.0 :
             return 1
         else :
             return -1
@@ -140,7 +139,7 @@ class Plane :
             # Line segment is parallel to plane, assume no intersection.
             return None
 
-        numerator = self.D - self.planeNumber( point1.x, point1.y, point1.z )
+        numerator = -self.planeZero( point1.x, point1.y, point1.z )
         t = numerator / divisor
 
 
@@ -197,5 +196,28 @@ class Plane :
         pushTerm( self.A, x )
         pushTerm( self.B, y )
         pushTerm( self.C, z )
+
+        return fsum( terms )
+
+
+
+
+    # Calculate Ax + By + Cz - D for this plane and the x, y, and z values
+    # given as arguments. Do the calculation as accurately as possible. This
+    # can be useful to clients who want to know whether point (x,y,z) is on one
+    # side or the other of the plane, or in it.
+
+    def planeZero( self, x, y, z ) :
+
+        terms = []                          # A list of values to add
+
+        def pushTerm( coeff, value ) :      # Append a value to the list, if the corresponding plane coefficient is non-zero
+            if fabs(coeff) > float_info.epsilon :
+                terms.append( value )
+
+        pushTerm( self.A, self.A * x )
+        pushTerm( self.B, self.B * y )
+        pushTerm( self.C, self.C * z )
+        pushTerm( self.D, -self.D )
 
         return fsum( terms )
