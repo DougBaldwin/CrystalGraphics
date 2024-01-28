@@ -20,7 +20,8 @@
 
 
 from EdgeDictionary import EdgeDictionary
-from VectorOps import cross
+from GeometryUtilities import safeWrite
+from VectorOps import cross, length3
 from math import isclose
 
 
@@ -63,6 +64,10 @@ class Edge :
 		if Edge.allEdges.find2( vertex1, vertex2 ) :
 			raise RuntimeError( "Creating edge that already exists." )
 
+		# Also see if the edge is too short to be worth representing.
+		if length3( [vertex1.x - vertex2.x, vertex1.y - vertex2.y, vertex1.z - vertex2.z] ) < 0.00005 :
+			raise RuntimeError( "Creating ultra short edge" )
+
 
 		# The new edge is unique, so finish initializing it.
 
@@ -91,27 +96,51 @@ class Edge :
 		# I handle edges that have been broken down into smaller sub-edges
 		# recursively, whereas edges that aren't broken down get analyzed in
 		# detail for their relationship to the plane. But in both cases, I can
-		# quickly deal with edges that lie entirely in the plane.
+		# quickly deal with edges that lie entirely in the plane or entirely on
+		# one side of it.
 
 		side1 = plane.whichSide( self.end1 )
 		side2 = plane.whichSide( self.end2 )
 
-		if isclose( side1, 0 ) and isclose( side2, 0 ) :
+		if side1 < 0 and side2 < 0 :
+			# The edge lies entirely in back of then plane.
+			return None, self, None
+
+		elif side1 < 0 and side2 == 0 :
+			# The edge is in back of the plane, but one end lies in it.
+			# Indicate this by returning the edge as the back part of the split
+			# and the end in the plane as the splitting vertex.
+			return None, self, self.end2
+
+		elif side1 == 0 and side2 < 0 :
+			# Another case where the edge is behind the plane but with one end
+			# in it.
+			return None, self, self.end1
+
+		elif side1 == 0 and side2 == 0 :
 			# The edge lies in the plane. Signal this by saying the edge is in
 			# front and in back of the plane, but has no splitter vertex.
 			return self, self, None
 
+		elif side1 == 0 and side2 > 0 :
+			# The edge lies in front of the plane, with one end in it.
+			return self, None, self.end1
+
+		elif side1 > 0 and side2 == 0 :
+			# Another way for the edge to be in front of the plane with one end
+			# in it.
+			return self, None, self.end2
+
+		elif side1 > 0 and side2 > 0 :
+			# The last easy case, the edge is entirely in front of the plane.
+			return self, None, None
+
 		elif self.front is None and self.back is None :
 
-			# There are several possible ways the edge and plane can relate,
-			# recognizable by where the endpoints of the edge are relative to
-			# the plane:
+			# Now I have an unsplit edge that needs to actually be intersected
+			# with the plane. After intersection, I might have...
 			#   - One end in front of the plane and the other in back: the
 			#     plane nontrivially splits the edge.
-			#   - Both ends in front of the plane: The edge is entirely in
-			#     front of the plane, with no back part or splitting vertex.
-			#   - Both ends in back of the plane: Like the above, but the edge
-			#     is entirely in back of the plane.
 			#   - One end in front and the other in the plane: the edge is
 			#     really in front of the plane, but return the end in the
 			#     plane as a splitting vertex.
@@ -123,29 +152,21 @@ class Edge :
 
 			splitterVertex = plane.intersection( self.end1, self.end2 )
 
-			if side1 > 0 and ( isclose( side2, 0 ) or splitterVertex is self.end2 ) :
+			if side1 > 0 and splitterVertex is self.end2 :
 				# Edge is in front of the plane, but starting in it at end 2.
 				return self, None, self.end2
 
-			elif side2 > 0 and ( isclose( side1, 0 ) or splitterVertex is self.end1 ) :
+			elif side2 > 0 and splitterVertex is self.end1 :
 				# Edge is in front of the plane, but starting in it at end 1.
 				return self, None, self.end1
 
-			elif side1 < 0 and ( isclose( side2, 0 ) or splitterVertex is self.end2 ) :
+			elif side1 < 0 and splitterVertex is self.end2 :
 				# Edge is in back of the plane, but ending in it at end 2:
 				return None, self, self.end2
 
-			elif side2 < 0 and ( isclose( side1, 0.0 ) or splitterVertex is self.end1 ) :
+			elif side2 < 0 and splitterVertex is self.end1 :
 				# Edge is in back of the plane but ending in it at end 1.
 				return None, self, self.end1
-
-			elif side1 > 0 and side2 > 0 :
-				# Edge is distinctly in front of the plane.
-				return self, None, None
-
-			elif side1 < 0 and side2 < 0 :
-				# Edge is distinctly in back of the plane.
-				return None, self, None
 
 			else :
 
@@ -168,7 +189,7 @@ class Edge :
 		else :
 
 			# For an edge that has already been split, the plane can do one of
-			# 5 things, each with its corresponding result:
+			# 4 things, each with its corresponding result:
 			#   1. Split the front part of the edge. Return a new split edge
 			#      object, combining the split front part and the unsplit back.
 			#      Note that "front" and "back" as labels for the parts of the
@@ -183,8 +204,6 @@ class Edge :
 			#   4. Trivially "split" the edge at one of its endpoints. Return
 			#      the entire edge as in front or in back (as appropriate) of
 			#      the plane, but with the endpoint as the splitting vertex.
-			#   5. Not split the edge at all. Return the entire edge as in front
-			#      of or behind the plane, with nothing on the other side.
 			#
 			# To figure out which of these happens, try splitting the front
 			# part with the plane. If that produces non-empty front, back, and
@@ -255,27 +274,10 @@ class Edge :
 					return None, self, backEnd
 
 
-			# Plane doesn't split either part of this edge, so it must not
-			# split the edge at all. Figure out whether the edge is in front of
-			# the plane or behind it.
-
-			if side1 > 0 and side2 > 0 :
-				# The entire edge is in front of the plane.
-				return self, None, None
-
-			elif side1 < 0 and side2 < 0 :
-				# The entire edge is in back of the plane.
-				return None, self, None
-
-
 			# The relationship between the edge and plane is completely
-			# unforeseen. Report that to the user/developer and return values
-			# that will probably cause problems for the caller.
+			# unforeseen. Report that to the user/developer.
 
-			print( "Edge.split found unexpected relationship between split edge {} and {}".format( self, plane ) )
-			print( "\tEnd 1 at {} has side number {}".format( self.end1, side1 ) )
-			print( "\tEnd 2 at {} has side number {}".format( self.end2, side2 ) )
-			return None, None, None
+			raise RuntimeError( "Edge.split found unexpected relationship between split edge {} and {}".format(self,plane) )
 
 
 
@@ -445,6 +447,40 @@ class Edge :
 		return     isclose( product[0], 0.0, abs_tol=zeroTolerance ) \
 			   and isclose( product[1], 0.0, abs_tol=zeroTolerance ) \
 			   and isclose( product[2], 0.0, abs_tol=zeroTolerance )
+
+
+
+
+	# Write this edge to a stream, using ID numbers provided by an ID manager
+	# to keep track of pieces of geometry that appear in multiple places. See
+	# my project notes from August 17, 21, and 22, 2023, for more on why I want
+	# to write geometry to streams, some key ideas behind how I do it, and what
+	# the output format looks like.
+
+	def write( self, stream, ids ) :
+
+		# Start by identifying this geometry as an edge.
+		stream.write( "[Edge " )
+
+		# If the ID manager already has an ID for this edge, use it.
+		if ids.contains( self ) :
+			stream.write( "{}]\n".format( ids.find(self) ) )
+
+		else :
+			# Otherwise, give the edge an ID and write it in full.
+			id = ids.next()
+			ids.store( self, id )
+			stream.write( "{} ".format(id) )
+
+			self.end1.write( stream, ids )
+			self.end2.write( stream, ids )
+
+			safeWrite( self.front, stream, ids )
+			safeWrite( self.back, stream, ids )
+			safeWrite( self.splitterVertex, stream, ids )
+
+			stream.write( "]\n" )
+
 
 
 

@@ -44,3 +44,27 @@ class Vertex :
 	def coordinates( self ) :
 
 		return [ self.x, self.y, self.z ]
+
+
+
+
+	# Write this vertex to a stream, using (or creating) an ID number for it
+	# from an ID manager. See my August 17, 21, and 22, 2023, project notes for
+	# more on why I want to write geometry to streams, some of how I do it, and
+	# the stream format.
+
+	def write( self, stream, ids ) :
+
+		# No matter what, identify this geometry as a vertex.
+		stream.write( "[Vertex " )
+
+		# If the ID manager already knows about this vertex, just write its ID.
+		if ids.contains( self ) :
+			stream.write( "{}]\n".format( ids.find(self) ) )
+
+		else :
+			# Otherwise, give the vertex an ID and write it out in detail.
+			id = ids.next()
+			ids.store( self, id )
+
+			stream.write( "{} {} {} {}]\n".format( id, self.x, self.y, self.z ) )

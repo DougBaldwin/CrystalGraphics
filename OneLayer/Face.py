@@ -117,3 +117,31 @@ class Face :
 
 		if not self.isSplitter :
 			self.polygon.draw( renderer, self.orientation, self.color )
+
+
+
+
+	# Write this face to a stream, assigning it and its internal geometry ID
+	# numbers under the control of a caller-provided ID manager. See my project
+	# notes from August 17, 21, and 22, 2023, for more about why I want to
+	# write faces to streams, some of how I do it, and the format of the
+	# streams.
+
+	def write( self, stream, ids ) :
+
+		# Start by identifying this geometry as a face of a polyhedron.
+		stream.write( "[Face " )
+
+		# If this face is already known by the ID manager, just write its ID
+		# and I'm done.
+		if ids.contains( self ) :
+			stream.write( "{}]\n".format( ids.find(self) ) )
+
+		else :
+			# Otherwise, give the face an ID and write all its details.
+			id = ids.next()
+			ids.store( self, id )
+			stream.write( "{} ".format(id) )
+
+			self.polygon.write( stream, ids )
+			stream.write( "{} {} {}]\n".format( self.orientation, self.isSplitter, self.color ) )

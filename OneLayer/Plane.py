@@ -15,7 +15,7 @@
 
 
 from Vertex import Vertex
-from math import isclose, fabs, fsum
+from math import isclose, fabs, fsum, sqrt
 from sys import float_info
 
 
@@ -28,16 +28,18 @@ class Plane :
 
     # Internally I represent planes by the coefficients of their equation,
     # Ax + By + Cz = D. I store each coefficient in an attribute of the same
-    # name. I normalize planes when I create them so that the largest
-    # absolute value of any coefficient is 1.
+    # name. I normalize planes when I create them so that the normal vector
+    # <A,B,C> is a unit vector.
 
 
-    # Considering that normalization means that the coefficients of plane
-    # equations are "about" 1, I consider values within less than 10^-10 of
-    # each other to be the same for purposes of approximate equality tests in
-    # this class.
+    # To control round-off in plane calculations (and ultimately other
+    # calculations that depend on them), I make 2 more or less arbitrary
+    # decisions: any point less than half a micron away from a plane can be
+    # considered to be in that plane, and any sufficiently small number at all
+    # can be considered to be 0.
 
-    closeness = 1e-10
+    planeTolerance = 0.00005
+    zeroTolerance = 1e-10
 
 
 
@@ -46,26 +48,12 @@ class Plane :
 
     def __init__( self, A, B, C, D ) :
 
+        magnitude = sqrt( A*A + B*B + C*C )
 
-        # Figure out which coefficient is largest, for normalization. Use
-        # absolute values so that normalization doesn't change the sign of
-        # coefficients and thus the direction of the plane's normal.
-
-        maxCoeff = fabs( A )
-        if fabs(B) > maxCoeff :
-            maxCoeff = fabs( B )
-        if fabs(C) > maxCoeff :
-            maxCoeff = fabs( C )
-        if fabs(D) > maxCoeff :
-            maxCoeff = fabs( D )
-
-
-        # Save normalized coefficients in the appropriate attributes.
-
-        self.A = A / maxCoeff
-        self.B = B / maxCoeff
-        self.C = C / maxCoeff
-        self.D = D / maxCoeff
+        self.A = A / magnitude
+        self.B = B / magnitude
+        self.C = C / magnitude
+        self.D = D / magnitude
 
 
 
@@ -76,9 +64,10 @@ class Plane :
     def containsPoint( self, point ) :
 
         # From the equation for a plane, this plane contains the point if the
-        # the point's coordinates satisfy Ax + By + Cz = D.
+        # the point's coordinates satisfy Ax + By + Cz = D, to within the
+        # tolerance for being in a plane.
 
-        return isclose( self.planeZero( point.x, point.y, point.z ), 0.0, abs_tol = Plane.closeness )
+        return isclose( self.planeZero( point.x, point.y, point.z ), 0.0, abs_tol = Plane.planeTolerance )
 
 
 
@@ -110,7 +99,7 @@ class Plane :
 
         planeNumber = self.planeZero( point.x, point.y, point.z )
 
-        if isclose( planeNumber, 0.0, abs_tol = Plane.closeness ) :
+        if isclose( planeNumber, 0.0, abs_tol = Plane.planeTolerance ) :
             return 0
         elif planeNumber > 0.0 :
             return 1
@@ -135,7 +124,7 @@ class Plane :
 
         divisor = self.planeNumber( point2.x - point1.x, point2.y - point1.y, point2.z - point1.z )
 
-        if isclose( divisor, 0.0, abs_tol = Plane.closeness ) :
+        if isclose( divisor, 0.0, abs_tol = Plane.zeroTolerance ) :
             # Line segment is parallel to plane, assume no intersection.
             return None
 
@@ -151,10 +140,10 @@ class Plane :
         #   - If t is outside the interval [0,1], then there's no intersection
         #     within the segment.
 
-        if isclose( t, 0.0, abs_tol = Plane.closeness ) :
+        if isclose( t, 0.0, abs_tol = Plane.planeTolerance ) :
             return point1
 
-        elif isclose( t, 1.0 ) :
+        elif isclose( t, 1.0, abs_tol = Plane.planeTolerance ) :
             return point2
 
         elif 0.0 < t < 1.0 :
@@ -180,17 +169,14 @@ class Plane :
 
     # Calculate Ax + By + Cz, i.e., the "plane number" for this plane and the
     # x, y, and z values provided by the client. Do not include terms whose
-    # coefficient in the plane is less than the least significant bit of the
-    # largest coefficient (which is 1, thanks to normalization), as those
-    # coefficients are so small that I consider them to be 0 albeit with some
-    # roundoff error.
+    # coefficient in the plane is what I consider to be 0.
 
     def planeNumber( self, x, y, z ) :
 
         terms = []
 
         def pushTerm( coeff, component ) :
-            if fabs(coeff) > float_info.epsilon :
+            if fabs(coeff) > Plane.zeroTolerance :
                 terms.append( coeff * component )
 
         pushTerm( self.A, x )
@@ -212,7 +198,7 @@ class Plane :
         terms = []                          # A list of values to add
 
         def pushTerm( coeff, value ) :      # Append a value to the list, if the corresponding plane coefficient is non-zero
-            if fabs(coeff) > float_info.epsilon :
+            if fabs(coeff) > Plane.zeroTolerance :
                 terms.append( value )
 
         pushTerm( self.A, self.A * x )
@@ -221,3 +207,31 @@ class Plane :
         pushTerm( self.D, -self.D )
 
         return fsum( terms )
+
+
+
+
+    # Write a machine-readable description of this plane to a text stream
+    # provided by the caller. Geometric objects written to this stream have ID
+    # numbers, which I track with an ID manager that's also provided by the
+    # caller. See project notes from August 17, 21, and 22, 2023 for more
+    # information on the format for writing objects and the motivation for it.
+
+    def write( self, stream, ids ) :
+
+        # Identify this geometry as a plane, regardless of whether it's
+        # already in the dictionary.
+        stream.write( "[Plane " )
+
+        # If the plane already has an ID number, just write it and I'm done.
+        if ids.contains( self ) :
+            stream.write( "{}]".format( ids.find(self) ) )
+
+        else :
+            # Generate an ID for this plane, and write the full description.
+            id = ids.next()
+            ids.store( self, id )
+            stream.write( "{} {} {} {} {}]".format( id, self.A, self.B, self.C, self.D ) )
+
+        # Anything more that gets written to this stream starts on a new line.
+        stream.write( "\n" )

@@ -22,6 +22,7 @@
 from Vertex import Vertex
 from Edge import Edge, checkEndParents
 from Plane import Plane
+from GeometryUtilities import safeWrite, listWrite
 from VectorOps import cross, scale3, dot3
 
 
@@ -117,10 +118,10 @@ class Polygon :
                     else :
                         frontEdges.append( frontPart )
 
-                if backPart is not None :
+                if backPart is not None and backPart is not frontPart :
                     # Case where front and back are the same has already been
-                    # caught, so a non-empty back part really is behind the
-                    # plane here.
+                    # handled, so I'm only interested in non-empty back parts
+                    # that are distinct from the front here.
                     backEdges.append( backPart )
 
                 if splitter is not None and splitter not in splitterVertices :
@@ -507,6 +508,40 @@ class Polygon :
 
                 current = next
                 nextIndex += orientation
+
+
+
+
+    # Write a machine-readable description of this polygon to a stream.
+    # Geometric objects in the output have ID numbers, which are managed by
+    # an ID manager provided by the caller. See my project notes from August
+    # 17, 21, and 22, 2023 for more on why I want to be able to write objects
+    # to streams, how I do it, and the format of the resulting files.
+
+    def write( self, stream, ids ) :
+
+        # Output always starts by identifying this geometry as a polygon.
+        stream.write( "[Polygon " )
+
+        # If this polygon is already known to the ID manager, just write its ID
+        # number and I'm done.
+        if ( ids.contains( self ) ) :
+            stream.write( "{}]\n".format( ids.find(self) ) )
+
+        else :
+            # Otherwise, give this polygon an ID and write it to the stream in
+            # detail.
+
+            id = ids.next()
+            ids.store( self, id )
+            stream.write( "{} ".format(id) )
+
+            listWrite( self.edges, stream, ids )
+            safeWrite( self.front, stream, ids )
+            safeWrite( self.back, stream, ids )
+            safeWrite( self.splitterEdge, stream, ids )
+
+            stream.write( "]\n" )
 
 
 

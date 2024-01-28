@@ -25,6 +25,7 @@ from Polygon import Polygon
 from Edge import Edge, checkEndParents
 from Vertex import Vertex
 from EdgeDictionary import EdgeDictionary
+from GeometryUtilities import safeWrite, listWrite
 
 
 
@@ -263,7 +264,7 @@ class Polyhedron :
 			#     split at all.
 			#   - All the faces are in back of the plane. Similar to above, but
 			#     the polyhedron is in back of the plane.
-			#   - Some faces are in front of the plane and some in back. To Do.
+			#   - Some faces are in front of the plane and some in back.
 
 			if len(frontFaces) > 0 and len(backFaces) <= 1 :
 
@@ -300,7 +301,7 @@ class Polyhedron :
 				while currentEdge is not firstEdge :
 
 					if prevEdge is currentEdge :
-						print( "Polyhedron.split is in an infinite loop" )
+						raise RuntimeError( "Polyhedron.split is in an infinite loop" )
 
 					if firstEdge is None:
 						firstEdge = currentEdge
@@ -344,7 +345,7 @@ class Polyhedron :
 				self.back.faces = backFaces + [ backSeparator ]
 
 				if self.front.isEmpty() or self.back.isEmpty() :
-					print( "Polyhedron.split unexpectedly produced an empty part." )
+					raise RuntimeError( "Polyhedron.split unexpectedly produced an empty part." )
 
 				return [self.front], [self.back], [splitterPolygon]
 
@@ -472,3 +473,35 @@ class Polyhedron :
 
 			if self.back is not None :
 				self.back.draw( renderer )
+
+
+
+
+	# Write a machine-readable representation of this polyhedron to a stream.
+	# The polyhedron and its internal geometries have ID numbers managed by a
+	# caller-provided ID manager. See my project notes from August 17, 21, and
+	# 22, 2023 for a discussion of why I want to write geometry to streams,
+	# some of how I do it, and the format of the streams.
+
+	def write( self, stream, ids ) :
+
+		# Identify this geometry as a polyhedron.
+		stream.write( "[Polyhedron " )
+
+		# If the ID manager knows about this polyhedron, just write its ID and
+		# I'm done.
+		if ids.contains( self ) :
+			stream.write( "{}]\n".format( ids.find(self) ) )
+
+		else :
+			# Otherwise, give the polyhedron an ID and write it in detail.
+			id = ids.next()
+			ids.store( self, id )
+			stream.write( "{} ".format(id) )
+
+			listWrite( self.faces, stream, ids )
+			stream.write( "{} ".format( self.color ) )
+			safeWrite( self.front, stream, ids )
+			safeWrite( self.back, stream, ids )
+
+			stream.write( "]\n" )

@@ -3,5 +3,9 @@
 # Ignore compiled Python bytecode
 *.pyc
 
+# Ignore files in the Logs directory (crystal-generator logs)
+Logs/
+
 # Specific files to ignore
 .DS_Store
+.idea
