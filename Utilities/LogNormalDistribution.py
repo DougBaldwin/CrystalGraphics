@@ -57,7 +57,7 @@ class LogNormalDistribution ( ProbabilityDistribution ) :
 	def pdf( self, x ) :
 		
 		
-		# As long as x > 0, calculate the PDF from the formula give in the
+		# As long as x > 0, calculate the PDF from the formula given in the
 		# reference. But if X <= 0, set the PDF to 0.
 		
 		result = 0.0 if x <= 0.0 else exp( -log(x)**2 / ( 2.0 * self.sigma ** 2 ) ) / ( x * self.sigma * sqrt( 2.0 * pi ) )

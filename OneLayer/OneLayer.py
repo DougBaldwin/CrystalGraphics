@@ -20,6 +20,7 @@ from Substrate import Substrate
 from Amethyst import Amethyst
 from LogNormalDistribution import LogNormalDistribution
 from UniformDistribution import UniformDistribution
+from RecordedDistribution import RecordedDistribution
 from RotatingScreenRenderer import RotatingScreenRenderer
 from argparse import ArgumentParser
 from math import pi
@@ -34,6 +35,7 @@ parser = ArgumentParser( description="Generate and draw a single-layer amethyst 
 parser.add_argument( "-c", "--crystals", type=int, default=100, help="The number of crystals to create" )
 parser.add_argument( "-s", "--scale", type=float, default=0.3, help="Scale factor from random distribution to crystal sizes" )
 parser.add_argument( "-v", "--variation", type=float, default=0.4, help="Sigma parameter for crystal size distribution" )
+parser.add_argument( "-r", "--replay", help="File containing recorded distributions for crystal sizes, positions, etc." )
 
 
 arguments = parser.parse_args()
@@ -57,14 +59,38 @@ base = Substrate( substrateMinX, substrateMaxX, 0.0, substrateMaxY, substrateMin
 base.draw( renderer )
 
 
-# Generate the requested number of crystal sizes, taking them from a lognormal
-# distribution.
+# Check to see if there's a "replay" file to take crystal parameters from. If
+# there is, open it and get the distributions of crystal sizes, positions, etc.
+# from it.
 
-sizeDistribution = LogNormalDistribution( arguments.variation )
+if arguments.replay :
+
+	with open( arguments.replay ) as replayFile  :
+		sizeDistribution = RecordedDistribution( replayFile )
+		xDistribution = RecordedDistribution( replayFile )
+		zDistribution = RecordedDistribution( replayFile )
+		polarDistribution = RecordedDistribution( replayFile )
+		azimuthDistribution = RecordedDistribution( replayFile )
+
+else :
+
+	sizeDistribution = LogNormalDistribution( arguments.variation )
+	xDistribution = UniformDistribution( substrateMinX, substrateMaxX )
+	zDistribution = UniformDistribution( substrateMinZ, substrateMaxZ )
+	polarDistribution = UniformDistribution( 0.0, pi / 2.0 )
+	azimuthDistribution = UniformDistribution( 0.0, 2.0 * pi )
+
+
+
+# Generate the requested number of crystal sizes, taking them from a lognormal
+# distribution and ordering them from largest to smallest.
+
 sizes = []
 
 for i in range( arguments.crystals ) :
 	sizes.append( arguments.scale * sizeDistribution.sample() )
+
+sizes.sort( reverse=True )
 
 
 # Generate the actual crystals, in decreasing order of size. Place the crystals
@@ -76,13 +102,6 @@ for i in range( arguments.crystals ) :
 # many placements I do before declaring the aggregate finished.
 
 crystals = []
-
-xDistribution = UniformDistribution( substrateMinX, substrateMaxX )
-zDistribution = UniformDistribution( substrateMinZ, substrateMaxZ )
-polarDistribution = UniformDistribution( 0.0, pi / 2.0 )
-azimuthDistribution = UniformDistribution( 0.0, 2.0 * pi )
-
-sizes.sort( reverse=True )
 
 remainingPlacements = 50 * arguments.crystals
 actualPlacements = 0
