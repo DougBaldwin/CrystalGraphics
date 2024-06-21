@@ -150,11 +150,15 @@ class Polygon :
                 # edge into both the front and back edges to create the edge
                 # lists for these new polygons.
 
-                self.splitterEdge = Edge( splitterVertices[0], splitterVertices[1] )
+                splitterEdge = Edge( splitterVertices[0], splitterVertices[1] )
 
-                frontEdges = insertEdge( self.splitterEdge, frontEdges )
-                backEdges = insertEdge( self.splitterEdge, backEdges )
+                frontEdges = insertEdge( splitterEdge, frontEdges )
+                backEdges = insertEdge( splitterEdge, backEdges )
 
+                if nearCollinear( splitterEdge, frontEdges ) or nearCollinear( splitterEdge, backEdges ) :
+                    print( "Polygon.split would make splitter edge {} nearly collinear with neighbor(s) in subpolygons".format( splitterEdge ) )
+
+                self.splitterEdge = splitterEdge
                 self.front = Polygon( frontEdges )
                 self.back = Polygon( backEdges )
 
@@ -527,6 +531,30 @@ def insertEdge( newEdge, edgeList ) :
     # not be anywhere I can insert the new edge.
 
     raise ValueError( "No insertion point" )
+
+
+
+
+# Determine whether an edge is collinear (to within some tolerance) with one of
+# its neighbors in a list of edges proposed for making a polygon. Return True
+# if so, and False if not.
+
+def nearCollinear( e, edges ) :
+
+
+    # Find the edge in question and its neighbors.
+
+    pos = edges.index( e )
+    previous = (pos - 1) % len(edges)
+    next = (pos + 1) % len(edges)
+
+
+    # Check collinearity.
+
+    collinearityBound = 0.03                   # Parallelism measures less than this count as collinear
+
+    return    edges[previous].parallelism( e ) < collinearityBound \
+           or e.parallelism( edges[next] ) < collinearityBound
 
 
 

@@ -20,7 +20,7 @@
 
 
 from EdgeDictionary import EdgeDictionary
-from VectorOps import cross
+from VectorOps import cross, length3
 from math import isclose
 
 
@@ -386,7 +386,8 @@ class Edge :
 	# form, compatible with the vector utility functions used in my crystal
 	# aggregate programs. This method is helpful when I want a vector along an
 	# edge, and want to be sure it points in a particular direction
-	# (counterclockwise or clockwise) around a face.
+	# (counterclockwise or clockwise) around a face. For case where direction
+	# doesn't matter, see "vectorAlong."
 
 	def vectorTo( self, target ) :
 
@@ -402,12 +403,43 @@ class Edge :
 
 
 
+	# Return a vector along an edge. The result is a 4-element list
+	# representing the vector in homogeneous form and compatible with the
+	# vector utility functions I use in my crystal aggregate programs. This
+	# method returns a vector that points in an arbitrary direction along the
+	# edge; for control over what direction the vector points, use "vectorTo."
+
+	def vectorAlong( self ) :
+		return [ self.end2.x - self.end1.x, self.end2.y - self.end1.y, self.end2.z - self.end1.z, 0.0 ]
+
+
+
+
 	# Check to see if a given vertex is one of the ends of an edge. Return True
 	# if it is and False if not.
 
 	def hasEnd( self, vertex ) :
 
 		return self.end1 is vertex or self.end2 is vertex
+
+
+
+
+	# Return a measure of how nearly parallel this edge is to another. The
+	# measure is the ratio of the magnitude of the cross product of the vectors
+	# along the edges to the product of the vectors' magnitudes. This is the
+	# sine of the angle between the edges, and so will be 0 for perfectly
+	# parallel edges, and positive for non-parallel edges. As the angle between
+	# the edges increases, the measure becomes more positive, although not
+	# linearly, until for perpendicular edges it's 1.
+
+	def parallelism( self, other ) :
+
+
+		myVector = self.vectorAlong()
+		otherVector = other.vectorAlong()
+
+		return length3( cross( myVector, otherVector ) ) / ( length3(myVector) * length3(otherVector) )
 
 
 
