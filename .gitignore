@@ -3,9 +3,12 @@
 # Ignore compiled Python bytecode
 *.pyc
 
-# Ignore files in the Logs directory (crystal-generator logs)
+# Ignore directories of log files or saved crystal distributions.
 Logs/
+SavedDistributions/
 
-# Specific files to ignore
+# Ignore PyCharm ".idea" directories
+.idea/
+
+# Other specific files to ignore
 .DS_Store
-.idea
