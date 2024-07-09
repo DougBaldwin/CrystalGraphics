@@ -16,6 +16,11 @@
 
 
 
+from math import sqrt
+
+
+
+
 class Vertex :
 	
 	
@@ -44,6 +49,14 @@ class Vertex :
 	def coordinates( self ) :
 
 		return [ self.x, self.y, self.z ]
+
+
+
+
+	# Calculate the distance between this vertex and another.
+
+	def distance( self, other ) :
+		return sqrt( (self.x - other.x) ** 2 + (self.y-other.y) ** 2 + (self.z-other.z) ** 2 )
 
 
 

@@ -141,32 +141,39 @@ class Edge :
 			# with the plane. After intersection, I might have...
 			#   - One end in front of the plane and the other in back: the
 			#     plane nontrivially splits the edge.
-			#   - One end in front and the other in the plane: the edge is
-			#     really in front of the plane, but return the end in the
-			#     plane as a splitting vertex.
-			#   - One end in back of the plane and the other in the plane:
-			#     like the previous case, but the edge is in back of the plane.
-			# Test for each possibility in an order that puts "an end basically
-			# in the plane" cases first, since round-off could make them look
-			# like other cases too.
+			#   - One end in front and the other in or at least close to the
+			#     plane: the edge is really in front of the plane, but return
+			#     the end in the plane as a splitting vertex.
+			#   - One end in back of the plane and the other in (or close to)
+			#     the plane: like the previous case, but the edge is in back of
+			#     the plane.
+			# Note that split points that are close to and end of the edge are
+			# treated as being at the end, to avoid future problems with very
+			# small geometry and round-off. At the moment, "close to" an end
+			# means less than half of one percent of the edge's length away
+			# from the end. Test for each possibility in an order that puts "an
+			# end basically in the plane" cases first, since round-off could
+			# make them look like other cases too.
 
 			splitterVertex = plane.intersection( self.end1, self.end2 )
 
-			if side1 > 0 and splitterVertex is self.end2 :
-				# Edge is in front of the plane, but starting in it at end 2.
-				return self, None, self.end2
+			if self.isSmallSplit( splitterVertex, self.end2 ) :
+				# The plane intersects the edge ridiculously close to end 2.
+				if side1 > 0 :							# Is the other end in front of the plane?
+					return self, None, self.end2
+				elif side1 < 0 :						# Is the other end behind the plane?
+					return None, self, self.end2
+				else :									# The other end must be in the plane
+					return self, self, None
 
-			elif side2 > 0 and splitterVertex is self.end1 :
-				# Edge is in front of the plane, but starting in it at end 1.
-				return self, None, self.end1
-
-			elif side1 < 0 and splitterVertex is self.end2 :
-				# Edge is in back of the plane, but ending in it at end 2:
-				return None, self, self.end2
-
-			elif side2 < 0 and splitterVertex is self.end1 :
-				# Edge is in back of the plane but ending in it at end 1.
-				return None, self, self.end1
+			elif self.isSmallSplit( splitterVertex, self.end1 ) :
+				# The intersection is ridiculously close to end 1.
+				if side2 > 0 :							# Is the other end in front of the plane?
+					return self, None, self.end1
+				elif side2 < 0 :						# Is the other end behind the plane?
+					return None, self, self.end1
+				else :									# The other end is in the plane
+					return self, self, None
 
 			else :
 
@@ -352,7 +359,7 @@ class Edge :
 
 		# Check that the edges are parallel. If they aren't, there's no way a
 		# single edge can be their union. But if they are parallel, the next
-		# check (that they share a point) will mean that they're colinear, and
+		# check (that they share a point) will mean that they're collinear, and
 		# so some other edge could be their union.
 
 		if not self.isParallelTo( other ) :
@@ -397,6 +404,21 @@ class Edge :
 
 
 
+	# Test whether a proposed splitting point for this edge is actually so
+	# close to one of the existing ends as to make the split dangerous (i.e.,
+	# likely to result in geometry to small to be accurately processed later).
+	# Return True if that is the case, and False if not.
+
+	def isSmallSplit( self, splitter, end ) :
+
+		# "Dangerously close" to the end currently means less than half of one
+		# percent of the edge's length away from the end.
+
+		return splitter.distance(end) / self.length() < 0.005
+
+
+
+
 	# Return a vector between the ends of this edge, and pointing toward edge
 	# "target." That edge should be one that shares an endpoint with this edge.
 	# The result is a 4-element list, representing the vector in homogeneous
@@ -432,12 +454,40 @@ class Edge :
 
 
 
+	# Return the length of this edge.
+
+	def length( self ) :
+		return length3( self.vectorAlong() )
+
+
+
+
 	# Check to see if a given vertex is one of the ends of an edge. Return True
 	# if it is and False if not.
 
 	def hasEnd( self, vertex ) :
 
 		return self.end1 is vertex or self.end2 is vertex
+
+
+
+
+	# Check to see if this edge contains a vertex anywhere, returning True if
+	# so and False if not
+
+	def containsVertex( self, vertex ) :
+
+		# This edge contains the vertex if that vertex is one of its ends, or
+		# if its front or back contains the vertex.
+
+		if self.hasEnd( vertex ) :
+			return True
+		elif self.front is not None and self.front.containsVertex( vertex ) :
+			return True
+		elif self.back is not None and self.back.containsVertex( vertex ) :
+			return True
+		else :
+			return False
 
 
 
@@ -466,19 +516,10 @@ class Edge :
 
 	def isParallelTo( self, other ) :
 
-
 		# Determine whether the edges are parallel by checking to see if the
-		# cross product of the vectors along them is 0 (to within some roundoff
-		# tolerance).
+		# parallelism measure is 0 (to within some round-off tolerance).
 
-		myDirection = [ self.end2.x - self.end1.x,  self.end2.y - self.end1.y,  self.end2.z - self.end1.z ]
-		otherDirection = [ other.end2.x - other.end1.x,  other.end2.y - other.end1.y,  other.end2.z - other.end1.z ]
-		product = cross( myDirection, otherDirection )
-
-		zeroTolerance = 1e-9
-		return     isclose( product[0], 0.0, abs_tol=zeroTolerance ) \
-			   and isclose( product[1], 0.0, abs_tol=zeroTolerance ) \
-			   and isclose( product[2], 0.0, abs_tol=zeroTolerance )
+		return self.parallelism( other ) <= 1.0e-9
 
 
 

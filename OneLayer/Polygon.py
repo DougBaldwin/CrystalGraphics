@@ -126,7 +126,7 @@ class Polygon :
 
                 if splitter is not None and splitter not in splitterVertices :
                     # A splitter vertex can show up twice if the plane passes
-                    # exactly through it. In that case, I only want to record
+                    # exactly through it, in which case, I only want to record
                     # it once.
                     splitterVertices.append( splitter )
 
@@ -138,65 +138,73 @@ class Polygon :
             #  - If all of the edges ended up in back of the plane, there's
             #    similarly no split and this polygon is the back result.
             #  - If all but one edge ended up in front of the plane and the
-            #    other in back or in it, and the splitting vertices are the
-            #    ends of that odd edge, then the polygon really lies in front
-            #    of the plane with one edge in it; this polygon is the front
-            #    result, but call the odd edge a splitting edge.
+            #    other in it, then the polygon really lies in front of the
+            #    plane with one edge in it; this polygon is the front result,
+            #    but call the edge in the plane a splitting edge.
             #  - Similarly if all but one edge is in back of the plane and one
-            #    in front or in, and with splitting vertices equal to its ends,
-            #    the polygon is really in back of the plane with the odd edge
-            #    as a splitting edge.
-            #  - If some edges are in front of the plane and some in back,
-            #    the polygon splits non-trivially into 2 parts.
-            #  - Otherwise ??? (Might want to catch the case where one edge
-            #    is in the plane and all others either in front or in back?)
+            #    in it, the polygon is really in back of the plane with the
+            #    edge in the plane as a splitting edge.
+            #  - If some edges are in front of the plane and some in back, the
+            #    polygon splits non-trivially. Ideally there are 2 parts, but
+            #    one might be degenerately small.
 
-            if len(frontEdges) >= 2 and len(backEdges) >= 2 and len(splitterVertices) == 2 :
-
-                # Non-trivial split. Since this polygon was originally unsplit,
-                # it must be convex. Therefore it splits along one edge,
-                # defined by 2 splitter vertices, into 2 sub-polygons. Make a
-                # splitter edge from the splitter vertices, then insert that
-                # edge into both the front and back edges to create the edge
-                # lists for these new polygons.
-
-                splitterEdge = Edge( splitterVertices[0], splitterVertices[1] )
-
-                frontEdges = insertEdge( splitterEdge, frontEdges )
-                backEdges = insertEdge( splitterEdge, backEdges )
-
-                if nearCollinear( splitterEdge, frontEdges ) or nearCollinear( splitterEdge, backEdges ) :
-                    print( "Polygon.split would make splitter edge {} nearly collinear with neighbor(s) in subpolygons".format( splitterEdge ) )
-
-                self.splitterEdge = splitterEdge
-                self.front = Polygon( frontEdges )
-                self.back = Polygon( backEdges )
-
-                return self.front, self.back, self.splitterEdge
-
-            elif len(frontEdges) >= 3 and len(backEdges) == 0 :
+            if len(frontEdges) >= 3 and len(backEdges) == 0 and len(inEdges) == 0 :
                 # Case where the whole polygon is in front of the plane.
                 return self, None, None
 
-            elif len(backEdges) >= 3 and len(frontEdges) == 0 :
+            elif len(backEdges) >= 3 and len(frontEdges) == 0 and len(inEdges) == 0 :
                 # Case where the whole polygon is in back of the plane.
                 return None, self, None
 
-            elif self.touchesPlane( frontEdges, backEdges, splitterVertices ) :
-                # The polygon is really in front of the plane, but one edge rests in it.
-                return self, None, backEdges[0]
-
-            elif self.touchesPlane( frontEdges, inEdges, splitterVertices ) :
-                # Once again, polygon is in front of the plane with one edge in it.
+            elif len(frontEdges) >= 2 and len(inEdges) == 1 :
+                # The polygon is has to be in front of the plane, but one edge rests in it.
                 return self, None, inEdges[0]
 
-            elif self.touchesPlane( backEdges, frontEdges, splitterVertices):
-                # The polygon is really in back of the plane, with one edge resting in it.
-                return None, self, frontEdges[0]
-
-            elif self.touchesPlane( backEdges, inEdges, splitterVertices ) :
-                # Another case where the polygon is in back of the plane with one edge in it.
+            elif len(backEdges) >= 2 and len(inEdges) == 1 :
+                # The polygon must be in back of the plane, with one edge resting in it.
                 return None, self, inEdges[0]
+
+            elif len(splitterVertices) == 2 :
+
+                # The polygon splits, but one of the subpolygons might be
+                # degenerate. That's the case if there's some edge of the
+                # polygon that contains both splitter vertices.
+
+                for e in self.edges :
+
+                    if e.containsVertex( splitterVertices[0] ) and e.containsVertex( splitterVertices[1] ) :
+
+                        # This edge contains both splitters, so it's involved
+                        # in some sort of degenerate split.
+
+                        if e.hasEnd( splitterVertices[0] ) and e.hasEnd( splitterVertices[1] ) :
+                            # The degenerate split wants this edge, but nothing
+                            # else, to be a subpolygon. A better description is
+                            # that the whole polygon is on one side of the
+                            # plane but this edge is its splitter.
+                            if len(frontEdges) > len(backEdges) :
+                                return self, None, e
+                            else :
+                                return None, self, e
+
+                        else :
+                            # The degenerate split has a degenerate triangle
+                            # at one vertex of this polygon. The polygon is
+                            # in front of or behind the plane with no splitter.
+                            if len(frontEdges) > len(backEdges) :
+                                return self, None, None
+                            else :
+                                return None, self, None
+
+
+                # I checked every edge, and none contained both splitters. The
+                # split is nondegenerate.
+
+                self.splitterEdge = Edge( splitterVertices[0], splitterVertices[1] )
+                self.front = Polygon( insertEdge(self.splitterEdge, frontEdges) )
+                self.back = Polygon( insertEdge(self.splitterEdge, backEdges) )
+
+                return self.front, self.back, self.splitterEdge
 
             else :
 
@@ -319,6 +327,8 @@ class Polygon :
     # are the ones identified as splitting vertices. Return True if this
     # polygon does seem to touch the plane as described, and False if not.
 
+    # May not be used any more.
+
     def touchesPlane( self, onSideEdges, offSideEdges, splitterVertices ) :
 
         return      len( onSideEdges ) == len( self.edges ) - 1 \
@@ -326,6 +336,17 @@ class Polygon :
                 and len( splitterVertices ) == 2 \
                 and offSideEdges[0].hasEnd( splitterVertices[0] ) \
                 and offSideEdges[0].hasEnd( splitterVertices[1] )
+
+
+
+
+    # Given a list of edges, find and return a list containing just those that
+    # are not edges of this polygon.
+
+    # May not be used anymore.
+
+    def missingEdges( self, edgeList ) :
+        return [ e for e in self.edges if e not in edgeList ]
 
 
 
