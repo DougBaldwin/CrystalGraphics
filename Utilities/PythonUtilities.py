@@ -19,3 +19,14 @@
 def pickElement( sequence ) :
 
     return next( iter(sequence) )
+
+
+
+
+# Return the reversal of a sequence, without changing the sequence itself (the
+# opposite of list.reverse(), which modifies the list and doesn't return
+# anything).
+
+def reverseSeq( sequence ) :
+
+    return sequence[ : : -1 ]

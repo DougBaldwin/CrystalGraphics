@@ -584,6 +584,21 @@ def makeSplitEdge( newFront, newBack, newSplitter ) :
 
 
 
+# Create an edge from its two endpoints, except that if an edge with those
+# endpoints already exists, just return it.
+
+def makeEdge( end1, end2 ) :
+
+	existingEdge = Edge.allEdges.find2( end1, end2 )
+
+	if existingEdge :
+		return existingEdge
+	else :
+		return Edge( end1, end2 )
+
+
+
+
 # Given a list of edges that is intended to define a polygon, check to see if
 # the first and last edges in that list have a common parent. If so, patch the
 # list to use that parent instead of the 2 separate edges. This returns the
@@ -597,7 +612,7 @@ def checkEndParents( edges ) :
 	# If so, remove the last edge, replace the first with the parent, and
 	# iterate the process until I don't find a common parent. Note that this
 	# loop and the next one rely on the fact that the edge list represents a
-	# closed polygon, and thus has at least 3 non-colinear, and thus not
+	# closed polygon, and thus has at least 3 non-collinear, and thus not
 	# sharing a parent, edges, to ensure that it won't completely empty the
 	# list.
 

@@ -20,7 +20,7 @@
 
 
 from Vertex import Vertex
-from Edge import Edge, checkEndParents
+from Edge import Edge, makeEdge, checkEndParents
 from Plane import Plane
 from GeometryUtilities import safeWrite, listWrite
 from VectorOps import cross, scale3, dot3
@@ -190,17 +190,21 @@ class Polygon :
                         else :
                             # The degenerate split has a degenerate triangle
                             # at one vertex of this polygon. The polygon is
-                            # in front of or behind the plane with no splitter.
+                            # in front of or behind the plane, and the side of
+                            # the degenerate triangle that lies in edge e is a
+                            # splitter edge (for purposes of reporting back to
+                            # the client, not for recording in the polygon).
+                            splitter = makeEdge( splitterVertices[0], splitterVertices[1] )
                             if len(frontEdges) > len(backEdges) :
-                                return self, None, None
+                                return self, None, splitter
                             else :
-                                return None, self, None
+                                return None, self, splitter
 
 
                 # I checked every edge, and none contained both splitters. The
                 # split is nondegenerate.
 
-                self.splitterEdge = Edge( splitterVertices[0], splitterVertices[1] )
+                self.splitterEdge = makeEdge( splitterVertices[0], splitterVertices[1] )
                 self.front = Polygon( insertEdge(self.splitterEdge, frontEdges) )
                 self.back = Polygon( insertEdge(self.splitterEdge, backEdges) )
 

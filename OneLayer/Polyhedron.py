@@ -24,6 +24,7 @@ from Face import Face
 from Polygon import Polygon
 from Edge import Edge, checkEndParents
 from Vertex import Vertex
+from SplittingSet import SplittingSet
 from EdgeDictionary import EdgeDictionary
 from GeometryUtilities import safeWrite, listWrite
 
@@ -241,7 +242,7 @@ class Polyhedron :
 
 			frontFaces = []
 			backFaces = []
-			splitterEdges = EdgeDictionary()
+			splitterEdges = SplittingSet()
 
 			for f in self.faces :
 
@@ -288,35 +289,10 @@ class Polyhedron :
 				# orientations).
 
 				# The first thing I need to do is assemble a polygon for the
-				# separator face(s). Do this by listing the splitter edges in
-				# any order based on shared vertices.
+				# separator face(s). The splitter set should contain the edges
+				# of that polygon.
 
-				polygonEdges = []
-
-				currentEdge = splitterEdges.element()			# Edge to add to polygon edges
-				prevEdge = None									# Previous edge, added for debugging
-				currentVertex = currentEdge.end1				# The vertex I found the current edge from
-				firstEdge = None
-
-				while currentEdge is not firstEdge :
-
-					if prevEdge is currentEdge :
-						raise RuntimeError( "Polyhedron.split is in an infinite loop" )
-
-					if firstEdge is None:
-						firstEdge = currentEdge
-
-					polygonEdges = currentEdge.hoistInto( polygonEdges )
-
-					nextVertex = currentEdge.oppositeFrom( currentVertex )
-					prevEdge = currentEdge
-					for e in splitterEdges.find1( nextVertex ) :
-						if e is not currentEdge :
-							currentEdge = e
-							currentVertex = nextVertex
-							break
-
-				splitterPolygon = Polygon( checkEndParents( polygonEdges ) )
+				splitterPolygon = Polygon( checkEndParents( splitterEdges.list() ) )
 
 
 				# Make separator faces for the front and back polyhedra from
